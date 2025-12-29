@@ -284,7 +284,7 @@ impl<T: MinerConfig> BaseMiner<T> {
 		MineInput { desired_targets, all_targets, voter_pages, mut pages, do_reduce, round }: MineInput<
 			T,
 		>,
-	) -> Result<PagedRawSolution<T>, MinerError<T>> {
+	) -> Result<(PagedRawSolution<T>, Vec<(T::AccountId, ExtendedBalance)>), MinerError<T>> {
 		pages = pages.min(T::Pages::get());
 
 		// we also build this closure early, so we can let `targets` be consumed.
@@ -300,12 +300,14 @@ impl<T: MinerConfig> BaseMiner<T> {
 			.try_into()
 			.expect("Flattening the voters into `AllVoterPagesFlattenedOf` cannot fail; qed");
 
-		let ElectionResult { winners: _, assignments } = T::Solver::solve(
+		let ElectionResult { winners: winners_sorted_by_round, assignments } = T::Solver::solve(
 			desired_targets as usize,
 			all_targets.clone().to_vec(),
 			all_voters.clone().into_inner(),
 		)
 		.map_err(|e| MinerError::Solver(e))?;
+
+		// println!("Winners before trimming: {:?}", winners);
 
 		// reduce and trim supports. We don't trim length and weight here, since those are dependent
 		// on the final form of the solution ([`PagedRawSolution`]), thus we do it later.
@@ -353,8 +355,7 @@ impl<T: MinerConfig> BaseMiner<T> {
 				(pre_score, assignments, winners_removed, backers_removed)
 			};
 
-			miner_log!(
-				debug,
+			println!(
 				"initial score = {:?}, reduced {} edges, trimmed {} winners and {} backers due to global support limits",
 				_pre_score,
 				reduced_count,
@@ -414,7 +415,7 @@ impl<T: MinerConfig> BaseMiner<T> {
 		// now do the length trim.
 		let _trim_length_weight =
 			Self::maybe_trim_weight_and_len(&mut solution_pages, &voter_pages)?;
-		miner_log!(debug, "trimmed {} voters due to length restriction.", _trim_length_weight);
+		println!("trimmed {} voters due to length restriction.", _trim_length_weight);
 
 		// finally, wrap everything up. Assign a fake score here, since we might need to re-compute
 		// it.
@@ -426,8 +427,7 @@ impl<T: MinerConfig> BaseMiner<T> {
 			.map_err::<MinerError<T>, _>(Into::into)?;
 		paged.score = score;
 
-		miner_log!(
-			debug,
+		println!(
 			"mined a solution with {} pages, score {:?}, {} winners, {} voters, {} edges, and {} bytes",
 			pages,
 			score,
@@ -437,7 +437,7 @@ impl<T: MinerConfig> BaseMiner<T> {
 			paged.using_encoded(|b| b.len())
 		);
 
-		Ok(paged)
+		Ok((paged, winners_sorted_by_round))
 	}
 
 	/// perform the feasibility check on all pages of a solution, returning `Ok(())` if all good and
@@ -736,6 +736,7 @@ impl<T: Config> OffchainWorkerMiner<T> {
 			do_reduce,
 			round,
 		})
+			.map(|a| a.0)
 		.map_err(Into::into)
 	}
 
