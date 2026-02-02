@@ -187,7 +187,7 @@ where
 				Some(a) => a,
 				None => {
 					tracing::warn!(target: "xcm::on_unbalanced", "Failed to convert root origin into account id");
-					return
+					return;
 				},
 			};
 		let treasury_account: AccountIdOf<T> = TreasuryAccount::get();
