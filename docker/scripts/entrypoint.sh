@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Sanity check
 if [[ -z "${BINARY:-}" ]];
 then
