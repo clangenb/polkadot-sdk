@@ -18,8 +18,6 @@ pub mod macros;
 pub mod pools;
 pub mod xcm_helpers;
 
-use codec::Encode;
-use cumulus_primitives_core::relay_chain::Slot;
 pub use xcm_emulator;
 pub use xcm_simulator;
 
@@ -31,7 +29,7 @@ use sp_consensus_babe::AuthorityId as BabeId;
 use sp_consensus_beefy::ecdsa_crypto::AuthorityId as BeefyId;
 use sp_core::storage::Storage;
 use sp_keyring::{Ed25519Keyring, Sr25519Keyring};
-use sp_runtime::{traits::AccountIdConversion, BuildStorage, Digest, DigestItem};
+use sp_runtime::{traits::AccountIdConversion, BuildStorage};
 
 // Polkadot
 use parachains_common::BlockNumber;
@@ -41,9 +39,7 @@ use polkadot_runtime_parachains::configuration::HostConfiguration;
 // Cumulus
 use parachains_common::{AccountId, AuraId};
 use polkadot_primitives::{AssignmentId, ValidatorId};
-use sp_runtime::traits::Convert;
 use xcm::v5::{Junction, Location};
-use xcm_emulator::{RelayBlockNumber, AURA_ENGINE_ID};
 
 pub const XCM_V2: u32 = 2;
 pub const XCM_V3: u32 = 3;
@@ -69,17 +65,6 @@ pub const ASSET_HUB_ROCOCO_ID: u32 = 1000;
 pub const ASSET_HUB_WESTEND_ID: u32 = 1000;
 pub const ASSETS_PALLET_ID: u8 = 50;
 pub const PENPAL_ASSETS_PALLET_ID: u8 = 50;
-
-pub struct AuraDigestProvider {}
-
-impl Convert<(BlockNumber, RelayBlockNumber), Digest> for AuraDigestProvider {
-	fn convert((_, relay_block_number): (BlockNumber, RelayBlockNumber)) -> Digest {
-		let slot: Slot = (relay_block_number as u64).into();
-		let mut digest = Digest::default();
-		digest.logs.push(DigestItem::PreRuntime(AURA_ENGINE_ID, slot.encode()));
-		digest
-	}
-}
 
 parameter_types! {
 	pub PenpalALocation: Location = Location::new(1, [Junction::Parachain(PENPAL_A_ID)]);

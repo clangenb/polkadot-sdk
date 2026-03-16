@@ -21,7 +21,7 @@ use westend_system_emulated_network::westend_emulated_chain::westend_runtime::Dm
 
 use super::reserve_transfer::*;
 use crate::{
-	imports::*,
+	assets_issuance_on, foreign_issuance_on, imports::*,
 	tests::teleport::do_bidirectional_teleport_foreign_assets_between_para_and_asset_hub_using_xt,
 };
 
@@ -39,14 +39,14 @@ fn para_to_para_assethub_hop_assertions(mut t: ParaToParaThroughAHTest) {
 		vec![
 			// Withdrawn from sender parachain SA
 			RuntimeEvent::Balances(
-				pallet_balances::Event::Burned { who, amount }
+				pallet_balances::Event::Withdraw { who, amount }
 			) => {
 				who: *who == sov_penpal_a_on_ah,
 				amount: *amount == t.args.amount,
 			},
 			// Deposited to receiver parachain SA
 			RuntimeEvent::Balances(
-				pallet_balances::Event::Minted { who, .. }
+				pallet_balances::Event::Deposit { who, .. }
 			) => {
 				who: *who == sov_penpal_b_on_ah,
 			},
@@ -259,6 +259,9 @@ fn transfer_foreign_assets_from_asset_hub_to_para() {
 		type Assets = <PenpalA as PenpalAPallet>::Assets;
 		<Assets as Inspect<_>>::balance(roc_at_westend_parachains.clone(), &receiver)
 	});
+	let penpal_issuance_before = assets_issuance_on!(PenpalA, roc_at_westend_parachains.clone());
+	let ah_issuance_before =
+		foreign_issuance_on!(AssetHubWestend, roc_at_westend_parachains.clone());
 
 	// Set assertions and dispatchables
 	test.set_assertion::<AssetHubWestend>(system_para_to_para_sender_assertions);
@@ -281,8 +284,10 @@ fn transfer_foreign_assets_from_asset_hub_to_para() {
 	});
 	let receiver_rocs_after = PenpalA::execute_with(|| {
 		type Assets = <PenpalA as PenpalAPallet>::Assets;
-		<Assets as Inspect<_>>::balance(roc_at_westend_parachains, &receiver)
+		<Assets as Inspect<_>>::balance(roc_at_westend_parachains.clone(), &receiver)
 	});
+	let penpal_issuance_after = assets_issuance_on!(PenpalA, roc_at_westend_parachains.clone());
+	let ah_issuance_after = foreign_issuance_on!(AssetHubWestend, roc_at_westend_parachains);
 
 	// Sender's balance is reduced by amount sent plus delivery fees
 	assert!(sender_balance_after < sender_balance_before - native_amount_to_send);
@@ -296,6 +301,10 @@ fn transfer_foreign_assets_from_asset_hub_to_para() {
 	assert!(receiver_assets_after < receiver_assets_before + native_amount_to_send);
 	// Receiver's balance is increased by foreign amount sent
 	assert_eq!(receiver_rocs_after, receiver_rocs_before + foreign_amount_to_send);
+	// Penpal mints bridged asset transferred in
+	assert_eq!(penpal_issuance_after, penpal_issuance_before + foreign_amount_to_send);
+	// AH supply doesn't change (assets move to sovereign account)
+	assert_eq!(ah_issuance_after, ah_issuance_before);
 }
 
 /// Reserve Transfers of native asset from Parachain to System Parachain should work
@@ -415,6 +424,9 @@ fn transfer_foreign_assets_from_para_to_asset_hub() {
 			&receiver,
 		)
 	});
+	let penpal_issuance_before = assets_issuance_on!(PenpalA, roc_at_westend_parachains.clone());
+	let ah_issuance_before =
+		foreign_issuance_on!(AssetHubWestend, roc_at_westend_parachains.clone());
 
 	// Set assertions and dispatchables
 	test.set_assertion::<PenpalA>(para_to_system_para_sender_assertions);
@@ -435,10 +447,12 @@ fn transfer_foreign_assets_from_para_to_asset_hub() {
 	let receiver_rocs_after = AssetHubWestend::execute_with(|| {
 		type ForeignAssets = <AssetHubWestend as AssetHubWestendPallet>::ForeignAssets;
 		<ForeignAssets as Inspect<_>>::balance(
-			roc_at_westend_parachains.try_into().unwrap(),
+			roc_at_westend_parachains.clone().try_into().unwrap(),
 			&receiver,
 		)
 	});
+	let penpal_issuance_after = assets_issuance_on!(PenpalA, roc_at_westend_parachains.clone());
+	let ah_issuance_after = foreign_issuance_on!(AssetHubWestend, roc_at_westend_parachains);
 
 	// Sender's balance is reduced by exact amount sent (delivery fees are charged in native)
 	assert_eq!(sender_relay_native_after, sender_relay_native_before - relay_native_amount_to_send);
@@ -452,6 +466,10 @@ fn transfer_foreign_assets_from_para_to_asset_hub() {
 	assert!(receiver_relay_native_after < receiver_native_before + relay_native_amount_to_send);
 	// Receiver's balance is increased by foreign amount sent
 	assert_eq!(receiver_rocs_after, receiver_rocs_before + foreign_amount_to_send);
+	// Penpal burns bridged asset transferred out
+	assert_eq!(penpal_issuance_after, penpal_issuance_before - foreign_amount_to_send);
+	// AH supply doesn't change (assets move from sovereign account)
+	assert_eq!(ah_issuance_after, ah_issuance_before);
 }
 
 // ==============================================================================
@@ -604,6 +622,10 @@ fn transfer_foreign_assets_from_para_to_para_through_asset_hub() {
 		type Assets = <PenpalB as PenpalBPallet>::Assets;
 		<Assets as Inspect<_>>::balance(roc_at_westend_parachains.clone(), &receiver)
 	});
+	let penpal_1_issuance_before = assets_issuance_on!(PenpalA, roc_at_westend_parachains.clone());
+	let penpal_2_issuance_before = assets_issuance_on!(PenpalB, roc_at_westend_parachains.clone());
+	let ah_issuance_before =
+		foreign_issuance_on!(AssetHubWestend, roc_at_westend_parachains.clone());
 
 	// Set assertions and dispatchables
 	test.set_assertion::<PenpalA>(para_to_para_through_hop_sender_assertions);
@@ -648,8 +670,11 @@ fn transfer_foreign_assets_from_para_to_para_through_asset_hub() {
 	});
 	let receiver_rocs_after = PenpalB::execute_with(|| {
 		type Assets = <PenpalB as PenpalBPallet>::Assets;
-		<Assets as Inspect<_>>::balance(roc_at_westend_parachains, &receiver)
+		<Assets as Inspect<_>>::balance(roc_at_westend_parachains.clone(), &receiver)
 	});
+	let penpal_1_issuance_after = assets_issuance_on!(PenpalA, roc_at_westend_parachains.clone());
+	let penpal_2_issuance_after = assets_issuance_on!(PenpalB, roc_at_westend_parachains.clone());
+	let ah_issuance_after = foreign_issuance_on!(AssetHubWestend, roc_at_westend_parachains);
 
 	// Sender's balance is reduced by amount sent.
 	assert_eq!(sender_wnds_after, sender_wnds_before - wnd_to_send);
@@ -671,6 +696,12 @@ fn transfer_foreign_assets_from_para_to_para_through_asset_hub() {
 	// Receiver's balance is increased by amount sent minus delivery fees.
 	assert!(receiver_wnds_after > receiver_wnds_before);
 	assert_eq!(receiver_rocs_after, receiver_rocs_before + roc_to_send);
+	// PenpalA burns bridged asset transferred out
+	assert_eq!(penpal_1_issuance_after, penpal_1_issuance_before - roc_to_send);
+	// AH supply doesn't change (assets move between sovereign accounts)
+	assert_eq!(ah_issuance_after, ah_issuance_before);
+	// PenpalB mints bridged asset transferred in
+	assert_eq!(penpal_2_issuance_after, penpal_2_issuance_before + roc_to_send);
 }
 
 // ==============================================================================================
@@ -734,7 +765,7 @@ fn transfer_native_asset_from_relay_to_penpal_through_asset_hub() {
 			Westend,
 			vec![
 				// Amount to teleport is withdrawn from Sender
-				RuntimeEvent::Balances(pallet_balances::Event::Burned { who, amount }) => {
+				RuntimeEvent::Balances(pallet_balances::Event::Withdraw { who, amount }) => {
 					who: *who == t.sender.account_id,
 					amount: *amount == t.args.amount,
 				},
@@ -751,7 +782,7 @@ fn transfer_native_asset_from_relay_to_penpal_through_asset_hub() {
 			vec![
 				// Deposited to receiver parachain SA
 				RuntimeEvent::Balances(
-					pallet_balances::Event::Minted { who, .. }
+					pallet_balances::Event::Deposit { who, .. }
 				) => {
 					who: *who == sov_penpal_on_ah,
 				},
@@ -766,9 +797,9 @@ fn transfer_native_asset_from_relay_to_penpal_through_asset_hub() {
 		assert_expected_events!(
 			PenpalA,
 			vec![
-				RuntimeEvent::Assets(pallet_assets::Event::Issued { asset_id, owner, .. }) => {
+				RuntimeEvent::Assets(pallet_assets::Event::Deposited { asset_id, who, .. }) => {
 					asset_id: *asset_id == Location::new(1, Here),
-					owner: *owner == t.receiver.account_id,
+					who: *who == t.receiver.account_id,
 				},
 			]
 		);

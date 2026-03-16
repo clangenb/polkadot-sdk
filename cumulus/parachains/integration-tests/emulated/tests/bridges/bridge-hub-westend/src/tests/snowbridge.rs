@@ -152,7 +152,7 @@ fn send_weth_token_from_ethereum_to_asset_hub() {
 		assert_expected_events!(
 			AssetHubWestend,
 			vec![
-				RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { .. }) => {},
+				RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { .. }) => {},
 			]
 		);
 	});
@@ -258,7 +258,7 @@ fn send_weth_from_ethereum_to_penpal() {
 		assert_expected_events!(
 			AssetHubWestend,
 			vec![
-				RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { .. }) => {},
+				RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { .. }) => {},
 				RuntimeEvent::XcmpQueue(cumulus_pallet_xcmp_queue::Event::XcmpMessageSent { .. }) => {},
 			]
 		);
@@ -270,7 +270,7 @@ fn send_weth_from_ethereum_to_penpal() {
 		assert_expected_events!(
 			PenpalB,
 			vec![
-				RuntimeEvent::Assets(pallet_assets::Event::Issued { .. }) => {},
+				RuntimeEvent::Assets(pallet_assets::Event::Deposited { .. }) => {},
 			]
 		);
 	});
@@ -330,9 +330,9 @@ fn send_eth_asset_from_asset_hub_to_ethereum_and_back() {
 		type RuntimeEvent = <AssetHubWestend as Chain>::RuntimeEvent;
 		type RuntimeOrigin = <AssetHubWestend as Chain>::RuntimeOrigin;
 
-		let _issued_event = RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued {
+		let _issued_event = RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited {
 			asset_id: origin_location.clone(),
-			owner: AssetHubWestendReceiver::get().into(),
+			who: AssetHubWestendReceiver::get().into(),
 			amount: ETH_AMOUNT,
 		});
 		// Check that AssetHub has issued the foreign asset
@@ -368,10 +368,10 @@ fn send_eth_asset_from_asset_hub_to_ethereum_and_back() {
 		)
 		.unwrap();
 
-		let _burned_event = RuntimeEvent::ForeignAssets(pallet_assets::Event::Burned {
+		let _burned_event = RuntimeEvent::ForeignAssets(pallet_assets::Event::Withdrawn {
 			asset_id: origin_location.clone(),
-			owner: AssetHubWestendReceiver::get().into(),
-			balance: ETH_AMOUNT,
+			who: AssetHubWestendReceiver::get().into(),
+			amount: ETH_AMOUNT,
 		});
 		// Check that AssetHub has issued the foreign asset
 		let _destination = origin_location.clone();
@@ -495,7 +495,7 @@ fn send_weth_from_ethereum_to_existent_account_on_asset_hub() {
 		assert_expected_events!(
 			AssetHubWestend,
 			vec![
-				RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { .. }) => {},
+				RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { .. }) => {},
 			]
 		);
 	});
@@ -512,7 +512,7 @@ fn send_weth_from_ethereum_to_non_existent_account_on_asset_hub() {
 		assert_expected_events!(
 			AssetHubWestend,
 			vec![
-				RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { .. }) => {},
+				RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { .. }) => {},
 			]
 		);
 	});
@@ -597,7 +597,7 @@ fn send_token_from_ethereum_to_asset_hub() {
 		// Check that the token was received and issued as a foreign asset on AssetHub
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { .. }) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { .. }) => {},]
 		);
 	});
 }
@@ -642,7 +642,7 @@ fn send_weth_asset_from_asset_hub_to_ethereum() {
 		// Check that AssetHub has issued the foreign asset
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { .. }) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { .. }) => {},]
 		);
 		let assets = vec![Asset {
 			id: AssetId(Location::new(
@@ -780,7 +780,7 @@ fn send_token_from_ethereum_to_penpal() {
 		assert_expected_events!(
 			AssetHubWestend,
 			vec![
-				RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { .. }) => {},
+				RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { .. }) => {},
 				RuntimeEvent::XcmpQueue(cumulus_pallet_xcmp_queue::Event::XcmpMessageSent { .. }) => {},
 			]
 		);
@@ -792,7 +792,7 @@ fn send_token_from_ethereum_to_penpal() {
 		assert_expected_events!(
 			PenpalB,
 			vec![
-				RuntimeEvent::Assets(pallet_assets::Event::Issued { .. }) => {},
+				RuntimeEvent::Assets(pallet_assets::Event::Deposited { .. }) => {},
 			]
 		);
 	});
@@ -925,7 +925,7 @@ fn transfer_relay_token() {
 
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::Balances(pallet_balances::Event::Burned{ .. }) => {},]
+			vec![RuntimeEvent::Balances(pallet_balances::Event::Withdraw{ .. }) => {},]
 		);
 
 		let events = AssetHubWestend::events();
@@ -934,7 +934,7 @@ fn transfer_relay_token() {
 		assert!(
 			events.iter().any(|event| matches!(
 				event,
-				RuntimeEvent::Balances(pallet_balances::Event::Burned { who, ..})
+				RuntimeEvent::Balances(pallet_balances::Event::Withdraw { who, ..})
 					if *who == ethereum_sovereign.clone(),
 			)),
 			"native token burnt from Ethereum sovereign account."
@@ -944,7 +944,7 @@ fn transfer_relay_token() {
 		assert!(
 			events.iter().any(|event| matches!(
 				event,
-				RuntimeEvent::Balances(pallet_balances::Event::Minted { who, amount })
+				RuntimeEvent::Balances(pallet_balances::Event::Deposit { who, amount })
 					if *amount >= TOKEN_AMOUNT && *who == AssetHubWestendReceiver::get()
 			)),
 			"Token minted to beneficiary."
@@ -1089,7 +1089,7 @@ fn transfer_ah_token() {
 
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::Assets(pallet_assets::Event::Burned{..}) => {},]
+			vec![RuntimeEvent::Assets(pallet_assets::Event::Withdrawn{..}) => {},]
 		);
 
 		let events = AssetHubWestend::events();
@@ -1098,7 +1098,7 @@ fn transfer_ah_token() {
 		assert!(
 			events.iter().any(|event| matches!(
 				event,
-				RuntimeEvent::Assets(pallet_assets::Event::Burned { owner, .. })
+				RuntimeEvent::Assets(pallet_assets::Event::Withdrawn { who: owner, .. })
 					if *owner == ethereum_sovereign.clone(),
 			)),
 			"token burnt from Ethereum sovereign account."
@@ -1108,7 +1108,7 @@ fn transfer_ah_token() {
 		assert!(
 			events.iter().any(|event| matches!(
 				event,
-				RuntimeEvent::Assets(pallet_assets::Event::Issued { owner, .. })
+				RuntimeEvent::Assets(pallet_assets::Event::Deposited { who: owner, .. })
 					if *owner == AssetHubWestendReceiver::get()
 			)),
 			"Token minted to beneficiary."
@@ -1192,7 +1192,7 @@ fn send_weth_from_ethereum_to_ahw_to_ahr_back_to_ahw_and_ethereum() {
 		assert_expected_events!(
 			AssetHubWestend,
 			vec![
-				RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { .. }) => {},
+				RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { .. }) => {},
 			]
 		);
 	});
@@ -1251,7 +1251,7 @@ fn send_weth_from_ethereum_to_ahw_to_ahr_back_to_ahw_and_ethereum() {
 			AssetHubRococo,
 			vec![
 				// Token was issued to beneficiary
-				RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { asset_id, owner, .. }) => {
+				RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { asset_id, who: owner, .. }) => {
 					asset_id: *asset_id == weth_location,
 					owner: *owner == AssetHubRococoReceiver::get().into(),
 				},
@@ -1301,7 +1301,7 @@ fn send_weth_from_ethereum_to_ahw_to_ahr_back_to_ahw_and_ethereum() {
 			BridgeHubRococo,
 			vec![
 				// pay for bridge fees
-				RuntimeEvent::Balances(pallet_balances::Event::Burned { .. }) => {},
+				RuntimeEvent::Balances(pallet_balances::Event::Withdraw { .. }) => {},
 				// message exported
 				RuntimeEvent::BridgeWestendMessages(
 					pallet_bridge_messages::Event::MessageAccepted { .. }
@@ -1335,7 +1335,7 @@ fn send_weth_from_ethereum_to_ahw_to_ahr_back_to_ahw_and_ethereum() {
 			AssetHubWestend,
 			vec![
 				// Token was issued to beneficiary
-				RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { asset_id, owner, .. }) => {
+				RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { asset_id, who: owner, .. }) => {
 					asset_id: *asset_id == weth_location,
 					owner: *owner == AssetHubWestendReceiver::get().into(),
 				},
@@ -1508,7 +1508,7 @@ fn transfer_penpal_native_asset() {
 
 		assert_expected_events!(
 			PenpalB,
-			vec![RuntimeEvent::Assets(pallet_assets::Event::Burned{ .. }) => {},]
+			vec![RuntimeEvent::Assets(pallet_assets::Event::Withdrawn{ .. }) => {},]
 		);
 	});
 
@@ -1516,7 +1516,7 @@ fn transfer_penpal_native_asset() {
 		type RuntimeEvent = <AssetHubWestend as Chain>::RuntimeEvent;
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { .. }) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { .. }) => {},]
 		);
 	});
 
@@ -1557,12 +1557,12 @@ fn transfer_penpal_native_asset() {
 
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Burned{..}) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Withdrawn{..}) => {},]
 		);
 
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued{..}) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited{..}) => {},]
 		);
 	});
 
@@ -1593,7 +1593,7 @@ fn transfer_penpal_native_asset() {
 
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Burned{..}) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Withdrawn{..}) => {},]
 		);
 	});
 
@@ -1602,7 +1602,7 @@ fn transfer_penpal_native_asset() {
 
 		assert_expected_events!(
 			PenpalB,
-			vec![RuntimeEvent::Balances(pallet_balances::Event::Minted{..}) => {},]
+			vec![RuntimeEvent::Balances(pallet_balances::Event::Deposit{..}) => {},]
 		);
 	})
 }
@@ -1719,12 +1719,12 @@ fn transfer_penpal_teleport_enabled_asset() {
 
 		assert_expected_events!(
 			PenpalB,
-			vec![RuntimeEvent::Assets(pallet_assets::Event::Burned{ .. }) => {},]
+			vec![RuntimeEvent::Assets(pallet_assets::Event::Withdrawn{ .. }) => {},]
 		);
 
 		assert_expected_events!(
 			PenpalB,
-			vec![RuntimeEvent::Assets(pallet_assets::Event::Burned{ .. }) => {},]
+			vec![RuntimeEvent::Assets(pallet_assets::Event::Withdrawn{ .. }) => {},]
 		);
 	});
 
@@ -1732,7 +1732,7 @@ fn transfer_penpal_teleport_enabled_asset() {
 		type RuntimeEvent = <AssetHubWestend as Chain>::RuntimeEvent;
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { .. }) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { .. }) => {},]
 		);
 	});
 
@@ -1774,12 +1774,12 @@ fn transfer_penpal_teleport_enabled_asset() {
 
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Burned{..}) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Withdrawn{..}) => {},]
 		);
 
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued{..}) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited{..}) => {},]
 		);
 	});
 
@@ -1822,7 +1822,7 @@ fn transfer_penpal_teleport_enabled_asset() {
 
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Burned{..}) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Withdrawn{..}) => {},]
 		);
 	});
 
@@ -1831,7 +1831,7 @@ fn transfer_penpal_teleport_enabled_asset() {
 
 		assert_expected_events!(
 			PenpalB,
-			vec![RuntimeEvent::Assets(pallet_assets::Event::Issued{..}) => {},]
+			vec![RuntimeEvent::Assets(pallet_assets::Event::Deposited{..}) => {},]
 		);
 	})
 }
@@ -2125,7 +2125,7 @@ fn transfer_roc_from_ah_with_transfer_and_then() {
 
 		assert_expected_events!(
 			AssetHubWestend,
-			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued{..}) => {},]
+			vec![RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited{..}) => {},]
 		);
 
 		let events = AssetHubWestend::events();
@@ -2134,7 +2134,7 @@ fn transfer_roc_from_ah_with_transfer_and_then() {
 		assert!(
 			events.iter().any(|event| matches!(
 				event,
-				RuntimeEvent::ForeignAssets(pallet_assets::Event::Burned { owner, .. })
+				RuntimeEvent::ForeignAssets(pallet_assets::Event::Withdrawn { who: owner, .. })
 					if *owner == ethereum_sovereign.clone(),
 			)),
 			"token burnt from Ethereum sovereign account."
@@ -2144,7 +2144,7 @@ fn transfer_roc_from_ah_with_transfer_and_then() {
 		assert!(
 			events.iter().any(|event| matches!(
 				event,
-				RuntimeEvent::ForeignAssets(pallet_assets::Event::Issued { owner, .. })
+				RuntimeEvent::ForeignAssets(pallet_assets::Event::Deposited { who: owner, .. })
 					if *owner == AssetHubWestendReceiver::get()
 			)),
 			"Token minted to beneficiary."

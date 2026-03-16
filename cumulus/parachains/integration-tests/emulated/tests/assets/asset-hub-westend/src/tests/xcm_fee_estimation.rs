@@ -81,11 +81,11 @@ fn sender_assertions(test: ParaToParaThroughAHTest) {
 		PenpalA,
 		vec![
 			RuntimeEvent::Assets(
-				pallet_assets::Event::Burned { asset_id, owner, balance }
+				pallet_assets::Event::Withdrawn { asset_id, who, amount }
 			) => {
 				asset_id: *asset_id == Location::new(1, []),
-				owner: *owner == test.sender.account_id,
-				balance: *balance == test.args.amount,
+				who: *who == test.sender.account_id,
+				amount: *amount == test.args.amount,
 			},
 		]
 	);
@@ -99,7 +99,7 @@ fn hop_assertions(test: ParaToParaThroughAHTest) {
 		AssetHubWestend,
 		vec![
 			RuntimeEvent::Balances(
-				pallet_balances::Event::Burned { amount, .. }
+				pallet_balances::Event::Withdraw { amount, .. }
 			) => {
 				amount: *amount >= test.args.amount * 80/100,
 			},
@@ -115,10 +115,10 @@ fn receiver_assertions(test: ParaToParaThroughAHTest) {
 		PenpalB,
 		vec![
 			RuntimeEvent::Assets(
-				pallet_assets::Event::Issued { asset_id, owner, .. }
+				pallet_assets::Event::Deposited { asset_id, who, .. }
 			) => {
 				asset_id: *asset_id == Location::new(1, []),
-				owner: *owner == test.receiver.account_id,
+				who: *who == test.receiver.account_id,
 			},
 		]
 	);
