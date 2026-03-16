@@ -845,7 +845,12 @@ impl<AccountId: IdentifierT, Accuracy: PerThing128> NposSolver
 		let winners = final_winners
 			.into_iter()
 			.enumerate()
-			.map(|(round, (who, backed_stake))| Winner { who, backed_stake, round: round as u32 })
+			.map(|(round, (who, backed_stake))| Winner {
+				who,
+				backed_stake,
+				round: u32::try_from(round)
+					.expect("round is bounded by to_elect which fits in u32; qed"),
+			})
 			.collect::<Vec<_>>();
 		Ok(ElectionResult { winners, assignments })
 	}
