@@ -32,6 +32,8 @@ fn account_on_sibling_syschain_aliases_into_same_local_account() {
 	// origin and target are the same account on different chains
 	let origin: AccountId = [1; 32].into();
 	let target = origin.clone();
+	// Depends on: XCM execution fees + liquidity pool swap overhead at the
+	// destination (asset conversion cost from relay token to native).
 	let fees = WESTEND_ED * 20;
 
 	PenpalB::mint_foreign_asset(

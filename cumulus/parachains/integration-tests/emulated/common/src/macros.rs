@@ -912,6 +912,9 @@ macro_rules! test_can_estimate_and_pay_exact_fees {
 			test.set_assertion::<$sender_para>(sender_assertions);
 			test.set_assertion::<$asset_hub>(hop_assertions);
 			test.set_assertion::<$receiver_para>(receiver_assertions);
+			// The `+1` on `final_execution_fees` accounts for rounding in the
+			// liquidity pool swap that converts relay tokens to the destination
+			// parachain's native asset for fee payment.
 			let call = get_call(
 				($crate::macros::Parent, local_execution_fees + local_delivery_fees),
 				($crate::macros::Parent, intermediate_execution_fees + intermediate_delivery_fees),
@@ -929,7 +932,8 @@ macro_rules! test_can_estimate_and_pay_exact_fees {
 				<Assets as $crate::macros::Inspect<_>>::balance($asset_id.into(), &beneficiary_id)
 			});
 
-			// We know the exact fees on every hop.
+			// We know the exact fees on every hop. The `- 1` mirrors the `+ 1`
+			// above: liquidity pool swap rounding.
 			assert_eq!(sender_assets_after, sender_assets_before - $amount);
 			assert_eq!(
 				receiver_assets_after,

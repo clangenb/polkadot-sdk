@@ -1578,8 +1578,7 @@ fn reserve_transfer_usdt_from_para_to_para_through_asset_hub() {
 
 	// Query final balances
 	let sender_assets_after = assets_balance_on!(PenpalA, usdt_from_asset_hub.clone(), &sender);
-	let receiver_assets_after =
-		assets_balance_on!(PenpalB, usdt_from_asset_hub.clone(), &receiver);
+	let receiver_assets_after = assets_balance_on!(PenpalB, usdt_from_asset_hub.clone(), &receiver);
 	let penpal_1_usdt_issuance_after = assets_issuance_on!(PenpalA, usdt_from_asset_hub.clone());
 	let ah_usdt_issuance_after = assets_issuance_on!(AssetHubWestend, usdt_id);
 	let penpal_2_usdt_issuance_after = assets_issuance_on!(PenpalB, usdt_from_asset_hub);

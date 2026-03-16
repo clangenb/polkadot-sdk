@@ -15,8 +15,7 @@
 
 use crate::{
 	asset_exists_on, assets_balance_on, assets_issuance_on, foreign_balance_on,
-	foreign_issuance_on, imports::*,
-	tests::send::penpal_register_foreign_asset_on_asset_hub,
+	foreign_issuance_on, imports::*, tests::send::penpal_register_foreign_asset_on_asset_hub,
 };
 
 // Registers a new asset on Penpal, then registers it over XCM as foreign asset on Asset Hub.
