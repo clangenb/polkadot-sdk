@@ -167,6 +167,24 @@ where
 			max_pov_percentage,
 		} = params;
 
+		// Wait for the Aura runtime API to become available.
+		// During warp sync, the runtime is not yet ready.
+		loop {
+			let best_hash = para_client.usage_info().chain.best_hash;
+			if para_client
+				.runtime_api()
+				.has_api::<dyn AuraApi<Block, P::Public>>(best_hash)
+				.unwrap_or(false)
+			{
+				break;
+			}
+			tracing::info!(
+				target: LOG_TARGET,
+				"Aura runtime API not yet available. Waiting..."
+			);
+			tokio::time::sleep(Duration::from_secs(2)).await;
+		}
+
 		let mut slot_timer = SlotTimer::<_, _, P>::new_with_offset(
 			para_client.clone(),
 			slot_offset,
@@ -201,8 +219,9 @@ where
 		loop {
 			// We wait here until the next slot arrives.
 			if slot_timer.wait_until_next_slot().await.is_err() {
-				tracing::error!(target: LOG_TARGET, "Unable to wait for next slot.");
-				return;
+				tracing::warn!(target: LOG_TARGET, "Unable to wait for next slot, retrying...");
+				tokio::time::sleep(Duration::from_secs(1)).await;
+				continue;
 			};
 
 			let Ok(relay_best_hash) = relay_client.best_block_hash().await else {

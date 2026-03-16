@@ -354,7 +354,7 @@ where
 		let slot_duration = match crate::slot_duration(&*self.client) {
 			Ok(d) => d,
 			Err(error) => {
-				tracing::error!(target: LOG_TARGET, %error, "Failed to fetch slot duration from runtime.");
+				tracing::warn!(target: LOG_TARGET, %error, "Failed to fetch slot duration from runtime.");
 				return Err(());
 			},
 		};
