@@ -103,11 +103,11 @@ pub fn seq_phragmen<AccountId: IdentifierT, P: PerThing128>(
 		.map(|w_ptr| {
 			let w = w_ptr.borrow();
 			Winner {
-			who: w.who.clone(),
-			backed_stake: w.backed_stake,
-			round: u32::try_from(w.round)
-				.expect("round is bounded by to_elect which fits in u32; qed"),
-		}
+				who: w.who.clone(),
+				backed_stake: w.backed_stake,
+				round: u32::try_from(w.round)
+					.expect("round is bounded by to_elect which fits in u32; qed"),
+			}
 		})
 		.collect();
 
