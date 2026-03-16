@@ -1183,7 +1183,7 @@ mod poll_operations {
 			assert_eq!(CurrentPhase::<T>::get(), Phase::Signed(2));
 
 			// submit a signed solution
-			let solution = OffchainWorkerMiner::<T>::mine_solution(3, true).unwrap();
+			let (solution, _) = OffchainWorkerMiner::<T>::mine_solution(3, true).unwrap();
 			assert_ok!(MultiBlockSigned::register(RuntimeOrigin::signed(1), solution.score));
 			for (index, page) in solution.solution_pages.into_iter().enumerate() {
 				assert_ok!(MultiBlockSigned::submit_page(
@@ -1342,7 +1342,7 @@ mod poll_operations {
 
 			// roll until signed and submit a solution.
 			roll_until_matches(|| MultiBlock::current_phase().is_signed(), false);
-			let solution = OffchainWorkerMiner::<T>::mine_solution(3, true).unwrap();
+			let (solution, _) = OffchainWorkerMiner::<T>::mine_solution(3, true).unwrap();
 			assert_ok!(MultiBlockSigned::register(RuntimeOrigin::signed(1), solution.score));
 			for (index, page) in solution.solution_pages.into_iter().enumerate() {
 				assert_ok!(MultiBlockSigned::submit_page(

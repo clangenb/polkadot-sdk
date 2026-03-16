@@ -386,7 +386,7 @@ mod validate_unsigned {
 			roll_to_snapshot_created();
 
 			let base_minimal_stake = 55;
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 			load_mock_signed_and_start(solution.clone());
 			roll_to_full_verification();
 
@@ -465,7 +465,7 @@ mod validate_unsigned {
 			// NOTE: unsigned solutions should have just 1 page, regardless of the configured
 			// page count.
 			roll_to_unsigned_open();
-			let attempt = mine_full_solution().unwrap();
+			let (attempt, _) = mine_full_solution().unwrap();
 			let call = Call::submit_unsigned { paged_solution: Box::new(attempt) };
 
 			assert_eq!(
@@ -474,7 +474,7 @@ mod validate_unsigned {
 				TransactionValidityError::Invalid(InvalidTransaction::Custom(3)),
 			);
 
-			let attempt = mine_solution(2).unwrap();
+			let (attempt, _) = mine_solution(2).unwrap();
 			let call = Call::submit_unsigned { paged_solution: Box::new(attempt) };
 
 			assert_eq!(
@@ -482,7 +482,7 @@ mod validate_unsigned {
 				TransactionValidityError::Invalid(InvalidTransaction::Custom(3)),
 			);
 
-			let attempt = mine_solution(1).unwrap();
+			let (attempt, _) = mine_solution(1).unwrap();
 			let call = Call::submit_unsigned { paged_solution: Box::new(attempt) };
 
 			assert!(UnsignedPallet::validate_unsigned(TransactionSource::Local, &call).is_ok(),);

@@ -2449,7 +2449,7 @@ mod tests {
 			assert_eq!(DesiredTargets::<Runtime>::get().unwrap(), 2);
 
 			// mine seq_phragmen solution with 2 iters.
-			let (solution, witness, _) = MultiPhase::mine_solution().unwrap();
+			let (solution, witness, _, _) = MultiPhase::mine_solution().unwrap();
 
 			// ensure this solution is valid.
 			assert!(QueuedSolution::<Runtime>::get().is_none());
@@ -2501,7 +2501,7 @@ mod tests {
 			assert!(Snapshot::<Runtime>::get().is_some());
 
 			// submit solution and assert it is queued and ready for elect to be called.
-			let (solution, _, _) = MultiPhase::mine_solution().unwrap();
+			let (solution, _, _, _) = MultiPhase::mine_solution().unwrap();
 			assert_ok!(MultiPhase::submit(
 				crate::mock::RuntimeOrigin::signed(99),
 				Box::new(solution),
@@ -2695,7 +2695,7 @@ mod tests {
 			// set the solution balancing to get the desired score.
 			crate::mock::Balancing::set(Some(BalancingConfig { iterations: 2, tolerance: 0 }));
 
-			let (solution, _, _) = MultiPhase::mine_solution().unwrap();
+			let (solution, _, _, _) = MultiPhase::mine_solution().unwrap();
 			// Default solution's score.
 			assert!(matches!(solution.score, ElectionScore { minimal_stake: 50, .. }));
 

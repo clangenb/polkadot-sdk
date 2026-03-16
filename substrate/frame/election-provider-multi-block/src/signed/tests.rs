@@ -455,7 +455,7 @@ mod e2e {
 
 			// a valid, strong solution.
 			let strong_score = {
-				let paged = mine_full_solution().unwrap();
+				let (paged, _) = mine_full_solution().unwrap();
 				load_signed_for_verification(999, paged.clone());
 				assert_eq!(balances(999), (92, 8));
 				paged.score
@@ -715,7 +715,7 @@ mod e2e {
 			roll_to_signed_open();
 			assert_full_snapshot();
 
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 			let real_score = paged.score;
 			let submitter = 99;
 
@@ -789,7 +789,7 @@ mod e2e {
 
 				// Submit invalid solution with high score but no pages (will be slashed)
 				{
-					let mut strong_score = mine_full_solution().unwrap().score;
+					let mut strong_score = mine_full_solution().unwrap().0.score;
 					strong_score.minimal_stake *= 2;
 					assert_ok!(SignedPallet::register(RuntimeOrigin::signed(99), strong_score));
 					// Don't submit any pages - this will cause it to be slashed
@@ -797,7 +797,7 @@ mod e2e {
 
 				// Submit good solution with all pages
 				{
-					let strong_solution = mine_full_solution().unwrap();
+					let (strong_solution, _) = mine_full_solution().unwrap();
 					load_signed_for_verification(999, strong_solution.clone());
 				}
 
@@ -896,7 +896,7 @@ mod e2e {
 
 				// submit a bad solution with junk in page 2
 				{
-					let mut bad_solution = mine_full_solution().unwrap();
+					let (mut bad_solution, _) = mine_full_solution().unwrap();
 					bad_solution.solution_pages[1usize].corrupt();
 					load_signed_for_verification(99, bad_solution);
 				}
@@ -904,7 +904,7 @@ mod e2e {
 				// submit a good solution that will be sent to next round as we won't have enough
 				// time for it.
 				{
-					let good_solution = mine_full_solution().unwrap();
+					let (good_solution, _) = mine_full_solution().unwrap();
 					load_signed_for_verification(999, good_solution);
 				}
 				// skip registration events
@@ -998,7 +998,7 @@ mod e2e {
 				// Submit two invalid solutions (register but don't submit pages)
 				{
 					let invalid_score1 = {
-						let mut score = mine_full_solution().unwrap().score;
+						let mut score = mine_full_solution().unwrap().0.score;
 						score.minimal_stake *= 2; // Make it attractive but it will be invalid
 						score
 					};
@@ -1007,7 +1007,7 @@ mod e2e {
 
 				{
 					let invalid_score2 = {
-						let mut score = mine_full_solution().unwrap().score;
+						let mut score = mine_full_solution().unwrap().0.score;
 						score.minimal_stake *= 3; // Make it even more attractive but still invalid
 						score
 					};
@@ -1016,7 +1016,7 @@ mod e2e {
 
 				// Submit one valid solution at the end
 				let valid_score = {
-					let valid_solution = mine_full_solution().unwrap();
+					let (valid_solution, _) = mine_full_solution().unwrap();
 					load_signed_for_verification(99, valid_solution.clone());
 					valid_solution.score
 				};
@@ -1364,7 +1364,7 @@ mod invulnerables {
 			assert_eq!(balances(99), (93, 7));
 
 			// a valid, strong solution.
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 			load_signed_for_verification(98, paged.clone());
 			let _ = signed_events_since_last_call();
 

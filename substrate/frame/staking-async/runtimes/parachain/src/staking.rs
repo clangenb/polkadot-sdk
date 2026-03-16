@@ -915,7 +915,7 @@ mod tests {
 			mb::Pallet::<Runtime>::asap();
 			for page in 1..=32 {
 				mb::unsigned::miner::OffchainWorkerMiner::<Runtime>::mine_solution(page, true)
-					.inspect(|p| log::info!(target: "runtime", "{:?}", p.score.pretty("DOT", 10)))
+					.inspect(|(p, _)| log::info!(target: "runtime", "{:?}", p.score.pretty("DOT", 10)))
 					.unwrap();
 			}
 		});

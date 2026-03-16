@@ -585,14 +585,20 @@ pub fn assert_none_snapshot() {
 /// changes.
 ///
 /// For testing, we never want to do reduce.
-pub fn mine_full_solution() -> Result<PagedRawSolution<Runtime>, OffchainMinerError<Runtime>> {
+pub fn mine_full_solution() -> Result<
+	(PagedRawSolution<Runtime>, Vec<sp_npos_elections::Winner<AccountId>>),
+	OffchainMinerError<Runtime>,
+> {
 	OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false)
 }
 
 /// Same as [`mine_full_solution`] but with custom pages.
 pub fn mine_solution(
 	pages: PageIndex,
-) -> Result<PagedRawSolution<Runtime>, OffchainMinerError<Runtime>> {
+) -> Result<
+	(PagedRawSolution<Runtime>, Vec<sp_npos_elections::Winner<AccountId>>),
+	OffchainMinerError<Runtime>,
+> {
 	OffchainWorkerMiner::<Runtime>::mine_solution(pages, false)
 }
 
