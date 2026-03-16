@@ -1,0 +1,19 @@
+title: Fix slot-based collator panic during warp sync (#11072)
+doc:
+- audience: Node Dev
+  description: "## Summary\n\n  - Wait for the Aura runtime API before starting the\
+    \ block builder main loop, preventing the panic when runtime is unavailable during\
+    \ warp sync\n  - Convert the fatal `return` on `wait_until_next_slot` failure\
+    \ to a retryable `continue` with backoff, so transient runtime API errors don't\
+    \ kill the essential task\n  - Downgrade the corresponding `slot_duration` fetch\
+    \ log from `error` to `warn` since it's now a recoverable condition\n\n  ## Context\n\
+    \n  When a parachain collator starts with `--authoring=slot-based` and performs\
+    \ warp sync, the `slot-based-block-builder` essential task immediately calls `slot_duration()`\
+    \ which requires `AuraApi_slot_duration`. During warp sync the runtime isn't ready,\
+    \ so this fails and the task returns, shutting down the node.\n\n  The lookahead\
+    \ collator avoids this by calling `wait_for_aura()` before starting. This PR adds\
+    \ an equivalent guard to the slot-based collator using `has_api::<dyn AuraApi>()`\
+    \ \u2014 no new trait bounds needed.\n\nCloses #11072."
+crates:
+- name: cumulus-client-consensus-aura
+  bump: patch
