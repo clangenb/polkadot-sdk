@@ -502,8 +502,7 @@ where
 		self.last_fee_asset = Some(id.clone());
 
 		if credit_change.peek() != Zero::zero() {
-			let unspent =
-				AssetsInHolding::new_from_fungible_credit(id, Box::new(credit_change));
+			let unspent = AssetsInHolding::new_from_fungible_credit(id, Box::new(credit_change));
 			payment.subsume_assets(unspent);
 		}
 		Ok(payment)
