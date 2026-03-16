@@ -912,14 +912,10 @@ macro_rules! test_can_estimate_and_pay_exact_fees {
 			test.set_assertion::<$sender_para>(sender_assertions);
 			test.set_assertion::<$asset_hub>(hop_assertions);
 			test.set_assertion::<$receiver_para>(receiver_assertions);
-			// The `+1` works around https://github.com/paritytech/polkadot-sdk/issues/11388:
-			// when `PayFees` contains the exact quoted fee, the swap produces zero
-			// change, creating a `Fungible(0)` entry in the fees register that
-			// propagates to an undecodable `AssetsTrapped` event.
 			let call = get_call(
 				($crate::macros::Parent, local_execution_fees + local_delivery_fees),
 				($crate::macros::Parent, intermediate_execution_fees + intermediate_delivery_fees),
-				($crate::macros::Parent, final_execution_fees + 1),
+				($crate::macros::Parent, final_execution_fees),
 			);
 			test.set_call(call);
 			test.assert();
@@ -933,8 +929,7 @@ macro_rules! test_can_estimate_and_pay_exact_fees {
 				<Assets as $crate::macros::Inspect<_>>::balance($asset_id.into(), &beneficiary_id)
 			});
 
-			// We know the exact fees on every hop. The `- 1` mirrors the `+ 1`
-			// above (see #11388).
+			// We know the exact fees on every hop.
 			assert_eq!(sender_assets_after, sender_assets_before - $amount);
 			assert_eq!(
 				receiver_assets_after,
@@ -943,7 +938,7 @@ macro_rules! test_can_estimate_and_pay_exact_fees {
 					local_delivery_fees -
 					intermediate_execution_fees -
 					intermediate_delivery_fees -
-					final_execution_fees - 1
+					final_execution_fees
 			);
 		}
 	};
