@@ -994,8 +994,7 @@ fn winners_are_sorted_by_round() {
 	}
 
 	// phragmms: same invariant.
-	let result: ElectionResult<_, Perbill> =
-		phragmms(3, candidates, voters, None).unwrap();
+	let result: ElectionResult<_, Perbill> = phragmms(3, candidates, voters, None).unwrap();
 	for (i, w) in result.winners.iter().enumerate() {
 		assert_eq!(w.round, i as u32, "phragmms: winner at index {i} has wrong round");
 	}
