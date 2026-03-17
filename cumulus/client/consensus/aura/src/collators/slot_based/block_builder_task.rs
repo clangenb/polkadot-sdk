@@ -167,24 +167,6 @@ where
 			max_pov_percentage,
 		} = params;
 
-		// Wait for the Aura runtime API to become available.
-		// During warp sync, the runtime is not yet ready.
-		loop {
-			let best_hash = para_client.usage_info().chain.best_hash;
-			if para_client
-				.runtime_api()
-				.has_api::<dyn AuraApi<Block, P::Public>>(best_hash)
-				.unwrap_or(false)
-			{
-				break;
-			}
-			tracing::info!(
-				target: LOG_TARGET,
-				"Aura runtime API not yet available. Waiting..."
-			);
-			tokio::time::sleep(Duration::from_secs(2)).await;
-		}
-
 		let mut slot_timer = SlotTimer::<_, _, P>::new_with_offset(
 			para_client.clone(),
 			slot_offset,
