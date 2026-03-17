@@ -13,7 +13,14 @@ doc:
     \ so this fails and the task returns, shutting down the node.\n\n  The lookahead\
     \ collator avoids this by calling `wait_for_aura()` before starting. This PR adds\
     \ an equivalent guard to the slot-based collator using `has_api::<dyn AuraApi>()`\
-    \ \u2014 no new trait bounds needed.\n\nCloses #11072."
+    \ \u2014 no new trait bounds needed.\n\n## Manual test\n  - Before fix: panics\
+    \ immediately with AuraApi_slot_duration not available\n  - After fix: should\
+    \ log a warning and wait for the runtime to become available, then proceed normally\
+    \ once warp sync delivers the state\n```\n ./target/release/polkadot-parachain\
+    \ \\\n    --chain asset-hub-polkadot \\\n    --sync warp \\\n    --authoring=slot-based\
+    \ \\\n    --tmp -- --sync warp\n```\nCloses #11072."
 crates:
 - name: cumulus-client-consensus-aura
+  bump: patch
+- name: polkadot-omni-node-lib
   bump: patch
