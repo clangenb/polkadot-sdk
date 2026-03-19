@@ -201,9 +201,8 @@ where
 		loop {
 			// We wait here until the next slot arrives.
 			if slot_timer.wait_until_next_slot().await.is_err() {
-				tracing::warn!(target: LOG_TARGET, "Unable to wait for next slot, retrying...");
-				tokio::time::sleep(Duration::from_secs(1)).await;
-				continue;
+				tracing::error!(target: LOG_TARGET, "Unable to wait for next slot.");
+				return;
 			};
 
 			let Ok(relay_best_hash) = relay_client.best_block_hash().await else {
