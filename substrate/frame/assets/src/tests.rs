@@ -190,10 +190,9 @@ fn refund_with_zero_balance_does_not_emit_burned() {
 		System::reset_events();
 		assert_ok!(Assets::refund(RuntimeOrigin::signed(1), 0, false));
 		assert_eq!(Assets::total_supply(0), 0);
-		assert!(System::events().iter().all(|e| !matches!(
-			e.event,
-			RuntimeEvent::Assets(crate::Event::Burned { .. })
-		)));
+		assert!(System::events()
+			.iter()
+			.all(|e| !matches!(e.event, RuntimeEvent::Assets(crate::Event::Burned { .. }))));
 	});
 }
 
