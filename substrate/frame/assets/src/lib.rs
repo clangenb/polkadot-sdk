@@ -2004,7 +2004,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 			}
 
-			ensure!(details.supply == calculated_supply, "Asset supply mismatch");
+			// Using >= instead of == because the provided `do_refund` implementation
+			// historically destroyed the account balance without decrementing the asset
+			// supply. Although this has been fixed, existing on-chain state may still
+			// contain overcounted supply from prior refunds.
+			// TODO: add a migration to recalculate supply, then tighten this to `==`.
+			ensure!(details.supply >= calculated_supply, "Asset supply mismatch");
 			ensure!(details.accounts == calculated_accounts, "Asset account count mismatch");
 			ensure!(
 				details.sufficients == calculated_sufficients,
