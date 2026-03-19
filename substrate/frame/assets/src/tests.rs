@@ -164,9 +164,65 @@ fn refunding_asset_deposit_with_burn_should_work() {
 		Balances::make_free_balance_be(&1, 100);
 		assert_ok!(Assets::touch(RuntimeOrigin::signed(1), 0));
 		assert_ok!(Assets::mint(RuntimeOrigin::signed(1), 0, 1, 100));
+		assert_eq!(Assets::total_supply(0), 100);
 		assert_ok!(Assets::refund(RuntimeOrigin::signed(1), 0, true));
 		assert_eq!(Balances::reserved_balance(&1), 0);
 		assert_eq!(Assets::balance(1, 0), 0);
+		// Supply must be decremented when balance is burned during refund.
+		assert_eq!(Assets::total_supply(0), 0);
+	});
+}
+
+#[test]
+fn refund_with_burn_decrements_supply_and_emits_burned() {
+	build_and_execute(|| {
+		assert_ok!(Assets::force_create(RuntimeOrigin::root(), 0, 1, false, 1));
+		Balances::make_free_balance_be(&1, 100);
+		Balances::make_free_balance_be(&2, 100);
+		// Account 1 holds via deposit (touch), account 2 also via deposit.
+		assert_ok!(Assets::touch(RuntimeOrigin::signed(1), 0));
+		assert_ok!(Assets::touch(RuntimeOrigin::signed(2), 0));
+		assert_ok!(Assets::mint(RuntimeOrigin::signed(1), 0, 1, 60));
+		assert_ok!(Assets::mint(RuntimeOrigin::signed(1), 0, 2, 40));
+		assert_eq!(Assets::total_supply(0), 100);
+
+		// Refund account 1 with burn: supply goes from 100 to 40.
+		assert_ok!(Assets::refund(RuntimeOrigin::signed(1), 0, true));
+		assert_eq!(Assets::total_supply(0), 40);
+		assert_eq!(Assets::balance(0, 1), 0);
+		System::assert_last_event(RuntimeEvent::Assets(crate::Event::Burned {
+			asset_id: 0,
+			owner: 1,
+			balance: 60,
+		}));
+
+		// Refund account 2 with burn: supply goes from 40 to 0.
+		assert_ok!(Assets::refund(RuntimeOrigin::signed(2), 0, true));
+		assert_eq!(Assets::total_supply(0), 0);
+		assert_eq!(Assets::balance(0, 2), 0);
+	});
+}
+
+#[test]
+fn refund_with_zero_balance_does_not_emit_burned() {
+	build_and_execute(|| {
+		assert_ok!(Assets::force_create(RuntimeOrigin::root(), 0, 1, false, 1));
+		Balances::make_free_balance_be(&1, 100);
+		assert_ok!(Assets::touch(RuntimeOrigin::signed(1), 0));
+		// Mint and then burn so balance is zero but account still exists with deposit.
+		assert_ok!(Assets::mint(RuntimeOrigin::signed(1), 0, 1, 100));
+		assert_ok!(Assets::burn(RuntimeOrigin::signed(1), 0, 1, 100));
+		assert_eq!(Assets::balance(0, 1), 0);
+		assert_eq!(Assets::total_supply(0), 0);
+
+		// Refund with zero balance: no supply change, no Burned event.
+		System::reset_events();
+		assert_ok!(Assets::refund(RuntimeOrigin::signed(1), 0, false));
+		assert_eq!(Assets::total_supply(0), 0);
+		assert!(System::events().iter().all(|e| !matches!(
+			e.event,
+			RuntimeEvent::Assets(crate::Event::Burned { .. })
+		)));
 	});
 }
 
