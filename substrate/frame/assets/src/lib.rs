@@ -2024,11 +2024,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 			}
 
-			// Using >= instead of == because the provided `do_refund` implementation destroys
-			// the account balance without decrementing the asset supply. This causes the
-			// tracked supply to permanently exceed the actual sum of balances + holds
-			// whenever a refund occurs.
-			ensure!(details.supply >= calculated_supply, "Asset supply mismatch");
+			ensure!(details.supply == calculated_supply, "Asset supply mismatch");
 			ensure!(details.accounts == calculated_accounts, "Asset account count mismatch");
 			ensure!(
 				details.sufficients == calculated_sufficients,
