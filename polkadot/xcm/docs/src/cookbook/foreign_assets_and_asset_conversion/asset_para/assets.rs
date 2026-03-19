@@ -78,7 +78,7 @@ pub mod asset_conversion {
 		type AssetId = u32;
 		type AssetIdParameter = u32;
 		type Currency = Balances;
-		// We disable the extrinsic origin for creating new assets - only th AssetConversion palet
+		// We disable the extrinsic origin for creating new assets - only the AssetConversion pallet
 		// may create them.
 		type CreateOrigin = NeverEnsureOrigin<AccountId>;
 		type ForceOrigin = AssetsForceOrigin;

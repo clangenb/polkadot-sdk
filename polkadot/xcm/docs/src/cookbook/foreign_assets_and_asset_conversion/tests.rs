@@ -233,6 +233,8 @@ fn registering_foreign_assets_work() {
 				amount1_provided: 10 * UNITS,
 				amount2_provided: 20 * FOREIGN_UNITS,
 				lp_token: lp_token_id,
+				// sqrt(10 * UNITS * 20 * FOREIGN_UNITS) - MintMinLiquidity(100)
+				// = sqrt(200 * 10^20) - 100 ≈ 141421356137
 				lp_token_minted: 141421356137,
 			},
 		));
@@ -269,8 +271,10 @@ fn registering_foreign_assets_work() {
 	// Confirm that we have received the foreign asset and that we could pay the XCM execution
 	// fees with our foreign asset.
 	AssetPara::execute_with(|| {
-		// We configured our `SwapFirstAssetTrader` to always charge 1 native Balance, but we need
-		// to pay 3 Simple Para tokens to get 1 native token.
+		// We configured our `SwapFirstAssetTrader` with `FixedFee<1>`, so it charges 1 native
+		// token per XCM. The constant-product AMM formula with pool ratio 20:10 (foreign:native)
+		// requires ceil(1 * 20 / (10 - 1)) = ceil(2.22) = 3 foreign tokens to buy 1 native token
+		// (accounting for integer rounding and the 0.3% LP fee).
 		let fee_to_be_paid = 3;
 
 		// The 3 Simple Para tokens that will be used to buy on native token are deposited to the
@@ -298,9 +302,9 @@ fn registering_foreign_assets_work() {
 
 		// Alice receives the remaining amount after deducting the fees.
 		asset_para::System::assert_has_event(asset_para::RuntimeEvent::ForeignAssets(
-			pallet_assets::Event::Issued {
+			pallet_assets::Event::Deposited {
 				asset_id: simple_para_asset_location.clone(),
-				owner: ALICE,
+				who: ALICE,
 				amount: 2 * FOREIGN_UNITS - fee_to_be_paid,
 			},
 		));
@@ -331,7 +335,7 @@ fn registering_foreign_assets_work() {
 		// In this example, Simple Para does not pay for execution fees. Hence, Alice receives
 		// the full amount.
 		simple_para::System::assert_has_event(simple_para::RuntimeEvent::Balances(
-			pallet_balances::Event::Minted { who: ALICE, amount: FOREIGN_UNITS },
+			pallet_balances::Event::Deposit { who: ALICE, amount: FOREIGN_UNITS },
 		));
 	});
 }

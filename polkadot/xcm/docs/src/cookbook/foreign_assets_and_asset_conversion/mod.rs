@@ -29,7 +29,7 @@
     "src/cookbook/foreign_assets_and_asset_conversion/asset_para/assets.rs",
     foreign_assets
 )]
-//! As the second step, we will configure the `AssetConvertion` pallet, which will create, and
+//! As the second step, we will configure the `AssetConversion` pallet, which will create, and
 //! manage liquidity pools for asset swaps. To achieve this, we must add another `pallet_assets`
 //! instance, which will be used to manage a liquidity pool's token.
 #![doc = docify::embed!(
@@ -57,7 +57,6 @@
     "src/cookbook/foreign_assets_and_asset_conversion/asset_para/xcm_config.rs",
     teleport_config
 )]
-//!
 //! Finally, in the test we show how the flow to create and use a foreign asset would look like, and
 //! what events would be emitted by the chain.
 #![doc = docify::embed!(

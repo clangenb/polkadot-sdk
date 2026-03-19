@@ -261,7 +261,12 @@ pub type Barrier = TrailingSetTopicAsId<(
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type RuntimeCall = RuntimeCall;
+	// NOTE: Sending from AssetPara is handled by `pallet_xcm::Config::XcmRouter`, not by
+	// `XcmSender` here. The executor's `XcmSender` is only used for instructions like
+	// `SendXcm`; `pallet_xcm` extrinsics (e.g. `limited_teleport_assets`) use their own router.
 	type XcmSender = ();
+	// No XCM executor events emitted. In production you'd wire this to `XcmPallet` to get
+	// executor-level tracing events.
 	type XcmEventEmitter = ();
 	type AssetTransactor = asset_transactor::AssetTransactors;
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
@@ -276,11 +281,13 @@ impl xcm_executor::Config for XcmConfig {
 	type AssetTrap = ();
 	type AssetLocker = ();
 	type AssetExchanger = asset_transactor::PoolAssetsExchanger;
-	type AssetClaims = ();
 	type SubscriptionService = ();
 	type PalletInstancesInfo = ();
-	// Fee manager that simply burns the fee.
+	// FeeManager handles *delivery* fees (burned here). This is distinct from execution fees,
+	// which are handled by `Trader` above (routed to TreasuryAccount).
 	type FeeManager = XcmFeeManagerFromComponents<(), ()>;
+	// NOTE: Set to 1 for simplicity. In production, use a higher value (e.g. 8) to support
+	// messages that hold multiple assets simultaneously (e.g. during swaps).
 	type MaxAssetsIntoHolding = frame::traits::ConstU32<1>;
 	type MessageExporter = ();
 	type UniversalAliases = Nothing;

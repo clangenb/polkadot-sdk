@@ -27,10 +27,8 @@ use xcm_simulator::{decl_test_network, decl_test_parachain, decl_test_relay_chai
 use super::{asset_para, relay_chain, simple_para};
 
 pub const ALICE: AccountId32 = AccountId32::new([0u8; 32]);
-pub const BOB: AccountId32 = AccountId32::new([1u8; 32]);
 pub const UNITS: u128 = 10_000_000_000;
 pub const FOREIGN_UNITS: u128 = 10_000_000_000;
-pub const CENTS: u128 = 100_000_000;
 pub const INITIAL_BALANCE: u128 = 100 * UNITS;
 
 decl_test_parachain! {

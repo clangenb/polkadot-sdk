@@ -5,7 +5,7 @@ doc:
   - Runtime Dev
   - Runtime User
   description: |-
-    Adds a new comprehensive example to the XMC-docs. It extracts the crucial parts around configuring a chain to be able to host foreign assets, like Asset Hub does, including support for asset conversion and automatic asset swaps for XCM fees.
+    Adds a new comprehensive example to the XCM-docs. It extracts the crucial parts around configuring a chain to be able to host foreign assets, like Asset Hub does, including support for asset conversion and automatic asset swaps for XCM fees.
 
     Additionally, it also shows how dispatchables need to be called to create a foreign asset from another chain, and what kind of events we would expect in case of success.
 
