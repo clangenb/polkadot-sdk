@@ -803,17 +803,29 @@ macro_rules! impl_assets_helpers_for_parachain {
 #[macro_export]
 macro_rules! impl_foreign_assets_helpers_for_parachain {
 	// By default, we assume that the pallet_assets instance handling foreign assets is called
-	// `ForeignAssets`. There are exceptions like `Penpal`, where it is simply called `Assets`.
+	// `ForeignAssets` and uses `Instance2`. There are exceptions like `Penpal`, where it is
+	// simply called `Assets`.
 	($chain:ident, $asset_id_type:ty, $reserve_data_type:ty) => {
 		$crate::impl_foreign_assets_helpers_for_parachain!(
 			$chain,
 			$asset_id_type,
 			$reserve_data_type,
-			ForeignAssets
+			ForeignAssets,
+			$crate::impls::pallet_assets::Instance2
 		);
 	};
 
 	($chain:ident, $asset_id_type:ty, $reserve_data_type:ty, $pallet_asset_name:ident) => {
+		$crate::impl_foreign_assets_helpers_for_parachain!(
+			$chain,
+			$asset_id_type,
+			$reserve_data_type,
+			$pallet_asset_name,
+			$crate::impls::pallet_assets::Instance2
+		);
+	};
+
+	($chain:ident, $asset_id_type:ty, $reserve_data_type:ty, $pallet_asset_name:ident, $instance:ty) => {
 		$crate::impls::paste::paste! {
 			impl<N: $crate::impls::Network> $chain<N> {
 				/// Create foreign assets using sudo `ForeignAssets::force_create()`
@@ -919,7 +931,7 @@ macro_rules! impl_foreign_assets_helpers_for_parachain {
 
 					<Self as Chain>::RuntimeCall::$pallet_asset_name($crate::impls::pallet_assets::Call::<
 						<Self as Chain>::Runtime,
-						$crate::impls::pallet_assets::Instance2,
+						$instance,
 					>::create {
 						id: asset_id.into(),
 						min_balance,
