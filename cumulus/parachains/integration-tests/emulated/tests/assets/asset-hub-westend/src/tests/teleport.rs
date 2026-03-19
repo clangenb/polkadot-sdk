@@ -772,15 +772,15 @@ fn teleport_to_untrusted_chain_fails() {
 	// this should fail
 	AssetHubWestend::execute_with(|| {
 		let result = <AssetHubWestend as AssetHubWestendPallet>::PolkadotXcm::transfer_assets_using_type_and_then(
-            signed_origin.clone(),
-            bx!(destination.clone().into()),
-            bx!(assets.clone().into()),
-            bx!(TransferType::Teleport),
-            bx!(fee_id.into()),
-            bx!(TransferType::Teleport),
-            bx!(VersionedXcm::from(Xcm::<()>::new())),
-            Unlimited,
-        );
+			signed_origin.clone(),
+			bx!(destination.clone().into()),
+			bx!(assets.clone().into()),
+			bx!(TransferType::Teleport),
+			bx!(fee_id.into()),
+			bx!(TransferType::Teleport),
+			bx!(VersionedXcm::from(Xcm::<()>::new())),
+			Unlimited,
+		);
 		assert_err!(
 			result,
 			DispatchError::Module(sp_runtime::ModuleError {
