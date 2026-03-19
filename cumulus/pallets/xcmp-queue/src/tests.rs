@@ -17,6 +17,7 @@ use super::{
 	mock::{mk_page, versioned_xcm, EnqueuedMessages, HRMP_PARA_ID},
 	*,
 };
+use std::collections::BTreeMap;
 use XcmpMessageFormat::*;
 
 use codec::Input;
@@ -26,7 +27,7 @@ use frame_support::{
 	traits::{BatchFootprint, Hooks},
 	StorageNoopGuard,
 };
-use mock::{new_test_ext, ParachainSystem, RuntimeOrigin as Origin, Test, XcmpQueue};
+use mock::{new_test_ext, FirstPagePos, ParachainSystem, RuntimeOrigin as Origin, Test, XcmpQueue};
 use sp_runtime::traits::{BadOrigin, Zero};
 use std::iter::{once, repeat};
 use xcm::{MAX_INSTRUCTIONS_TO_DECODE, MAX_XCM_DECODE_DEPTH};
@@ -77,6 +78,44 @@ fn generate_mock_xcm_page(
 		data.extend(xcm)
 	}
 	data
+}
+
+#[test]
+fn handling_signals_works() {
+	new_test_ext().execute_with(|| {
+		fn get_channel(recipient: ParaId) -> Option<OutboundChannelDetails> {
+			<OutboundXcmpStatus<Test>>::get()
+				.into_iter()
+				.find(|item| item.recipient == recipient)
+		}
+
+		// Suspend works;
+		let page = (XcmpMessageFormat::Signals, ChannelSignal::Suspend).encode();
+		XcmpQueue::handle_xcmp_messages(once((1000.into(), 1, page.as_slice())), Weight::MAX);
+		let channel = get_channel(1000.into()).unwrap();
+		assert_eq!(channel.state, OutboundState::Suspended);
+
+		// Resume works
+		let page = (XcmpMessageFormat::Signals, ChannelSignal::Resume).encode();
+		XcmpQueue::handle_xcmp_messages(once((1000.into(), 1, page.as_slice())), Weight::MAX);
+		let channel = get_channel(1000.into());
+		assert_eq!(channel, None);
+
+		// Only the first 3 signals are processed
+		let page = (
+			XcmpMessageFormat::Signals,
+			ChannelSignal::Suspend,
+			ChannelSignal::Resume,
+			ChannelSignal::Suspend,
+			ChannelSignal::Resume,
+			ChannelSignal::Resume,
+			ChannelSignal::Resume,
+		)
+			.encode();
+		XcmpQueue::handle_xcmp_messages(once((1000.into(), 1, page.as_slice())), Weight::MAX);
+		let channel = get_channel(1000.into()).unwrap();
+		assert_eq!(channel.state, OutboundState::Suspended);
+	})
 }
 
 #[test]
@@ -242,7 +281,6 @@ fn xcm_enqueueing_starts_dropping_on_out_of_weight() {
 		let xcms = encode_xcm_batch(generate_mock_xcm_batch(0, 10), XcmEncoding::Simple);
 		for (idx, xcm) in xcms.iter().enumerate() {
 			EnqueuedMessages::set(vec![]);
-
 			total_size += xcm.len();
 			let required_weight = <<Test as Config>::WeightInfo>::enqueue_xcmp_messages(
 				0,
@@ -251,12 +289,14 @@ fn xcm_enqueueing_starts_dropping_on_out_of_weight() {
 					size_in_bytes: total_size,
 					new_pages_count: idx as u32 + 1,
 				},
+				true,
 			);
 
 			let mut weight_meter = WeightMeter::with_limit(required_weight);
 			let res = XcmpQueue::enqueue_xcmp_messages(
 				1000.into(),
 				&xcms.iter().map(|xcm| xcm.as_bounded_slice()).collect::<Vec<_>>(),
+				true,
 				&mut weight_meter,
 			);
 			if idx < xcms.len() - 1 {
@@ -273,6 +313,69 @@ fn xcm_enqueueing_starts_dropping_on_out_of_weight() {
 					.collect::<Vec<_>>()
 			);
 		}
+	})
+}
+
+#[test]
+fn xcm_enqueueing_uses_correct_pov_size() {
+	test_xcm_enqueueing_uses_correct_pov_size(XcmEncoding::Simple);
+	test_xcm_enqueueing_uses_correct_pov_size(XcmEncoding::Double);
+}
+
+fn test_xcm_enqueueing_uses_correct_pov_size(xcm_encoding: XcmEncoding) {
+	let first_page_pos = 100_000;
+	// Our mocked queue enqueues 1 message per page.
+	// Let's make sure we don't hit the drop threshold.
+	new_test_ext().execute_with(|| {
+		<QueueConfig<Test>>::set(QueueConfigData {
+			suspend_threshold: 300,
+			drop_threshold: 300,
+			resume_threshold: 300,
+		});
+		FirstPagePos::set(BTreeMap::from([
+			(1000.into(), first_page_pos),
+			(2000.into(), first_page_pos),
+		]));
+
+		let page = generate_mock_xcm_page(0, 1, xcm_encoding);
+		let consumed_weight = XcmpQueue::handle_xcmp_messages(
+			[
+				// For the first page for a certain sender, we should take into account the
+				// `first_page_pos` in the PoV size
+				(1000.into(), 1, page.as_slice()),
+				// For the following pages, we shouldn't take into account the
+				// `first_page_pos` in the PoV size anymore
+				(1000.into(), 1, page.as_slice()),
+				(1000.into(), 1, page.as_slice()),
+				(1000.into(), 1, page.as_slice()),
+				(1000.into(), 1, page.as_slice()),
+			]
+			.into_iter(),
+			Weight::MAX,
+		);
+		assert!(consumed_weight.proof_size() > first_page_pos as u64);
+		assert!(consumed_weight.proof_size() < 2 * first_page_pos as u64);
+
+		let consumed_weight = XcmpQueue::handle_xcmp_messages(
+			[
+				// For the first page for a certain sender, we should take into account the
+				// `first_page_pos` in the PoV size
+				(1000.into(), 1, page.as_slice()),
+				// For the first page for a different sender, we should take into account the
+				// `first_page_pos` in the PoV size
+				(2000.into(), 1, page.as_slice()),
+				// For the following pages, we shouldn't take into account the
+				// `first_page_pos` in the PoV size anymore
+				(1000.into(), 1, page.as_slice()),
+				(2000.into(), 1, page.as_slice()),
+				(1000.into(), 1, page.as_slice()),
+				(2000.into(), 1, page.as_slice()),
+			]
+			.into_iter(),
+			Weight::MAX,
+		);
+		assert!(consumed_weight.proof_size() > 2 * first_page_pos as u64);
+		assert!(consumed_weight.proof_size() < 3 * first_page_pos as u64);
 	})
 }
 
@@ -984,6 +1087,66 @@ fn xcmp_queue_send_too_big_xcm_fails() {
 }
 
 #[test]
+fn concatenated_opaque_version_xcm_negotiation_works() {
+	new_test_ext().execute_with(|| {
+		let sibling_para_id = ParaId::from(1000);
+		// open HRMP channel to the sibling_para_id
+		ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(sibling_para_id);
+
+		let dest: Location = (Parent, Parachain(sibling_para_id.into())).into();
+		let msg = Xcm::<()>(vec![ClearOrigin]);
+
+		// If there is a message in the queue, the notification is not sent
+		assert_ok!(send_xcm::<XcmpQueue>(dest.clone(), msg.clone()));
+		assert_eq!(
+			XcmpQueue::take_outbound_messages(usize::MAX),
+			vec![(
+				sibling_para_id,
+				[ConcatenatedVersionedXcm.encode(), VersionedXcm::V5(msg.clone()).encode()]
+					.concat()
+			)]
+		);
+
+		// The queue is empty. The notification should be sent.
+		assert_eq!(
+			XcmpQueue::take_outbound_messages(usize::MAX),
+			vec![(sibling_para_id, ConcatenatedOpaqueVersionedXcm.encode())]
+		);
+
+		// The notification should not be sent again
+		assert!(XcmpQueue::take_outbound_messages(usize::MAX).is_empty());
+
+		// The recipient parachain still uses the `ConcatenatedVersionedXcm`.
+		let page = generate_mock_xcm_page(0, 1, XcmEncoding::Simple);
+		XcmpQueue::handle_xcmp_messages(once((1000.into(), 1, page.as_slice())), Weight::MAX);
+		// The next message is still sent using the `ConcatenatedVersionedXcm` format.
+		assert_ok!(send_xcm::<XcmpQueue>(dest.clone(), msg.clone()));
+		assert_eq!(
+			XcmpQueue::take_outbound_messages(usize::MAX),
+			vec![(
+				sibling_para_id,
+				[ConcatenatedVersionedXcm.encode(), VersionedXcm::V5(msg.clone()).encode()]
+					.concat()
+			)]
+		);
+
+		// The recipient switched to using `ConcatenatedOpaqueVersionedXcm`
+		let page = generate_mock_xcm_page(0, 0, XcmEncoding::Double);
+		XcmpQueue::handle_xcmp_messages(once((1000.into(), 1, page.as_slice())), Weight::MAX);
+		// The next message is sent using the `ConcatenatedOpaqueVersionedXcm` format.
+		assert_ok!(send_xcm::<XcmpQueue>(dest, msg.clone()));
+		assert_eq!(
+			XcmpQueue::take_outbound_messages(usize::MAX),
+			vec![(
+				sibling_para_id,
+				[ConcatenatedOpaqueVersionedXcm.encode(), VersionedXcm::V5(msg).encode().encode()]
+					.concat()
+			)]
+		);
+	})
+}
+
+#[test]
 fn verify_fee_factor_increase_and_decrease() {
 	use cumulus_primitives_core::AbridgedHrmpChannel;
 	use sp_runtime::FixedU128;
@@ -1120,7 +1283,7 @@ fn page_not_modified_when_fragment_does_not_fit() {
 			if num_pages == 2 {
 				let new_page_zero = OutboundXcmpMessages::<Test>::get(sibling, 0);
 				assert_eq!(old_page_zero, new_page_zero);
-				break
+				break;
 			} else if num_pages > 2 {
 				panic!("Too many pages created");
 			}

@@ -29,10 +29,10 @@ use sc_consensus::{
 	import_queue::{BasicQueue, Verifier as VerifierT},
 	BlockImport, BlockImportParams, ForkChoiceStrategy,
 };
-use sc_consensus_aura::{standalone as aura_internal, AuthoritiesTracker, CompatibilityMode};
+use sc_consensus_aura::{standalone as aura_internal, AuthoritiesTracker};
 use sc_telemetry::{telemetry, TelemetryHandle, CONSENSUS_DEBUG, CONSENSUS_TRACE};
 use schnellru::{ByLength, LruMap};
-use sp_api::ProvideRuntimeApi;
+use sp_api::{ApiExt, ProvideRuntimeApi};
 use sp_block_builder::BlockBuilder as BlockBuilderApi;
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::{error::Error as ConsensusError, BlockOrigin};
@@ -79,7 +79,8 @@ pub struct Verifier<P: Pair, Client, Block: BlockT, CIDP> {
 	create_inherent_data_providers: CIDP,
 	defender: Mutex<NaiveEquivocationDefender<NumberFor<Block>>>,
 	telemetry: Option<TelemetryHandle>,
-	authorities_tracker: AuthoritiesTracker<P, Block, Client>,
+	// Unused for now. Will be plugged in with a later PR.
+	_authorities_tracker: AuthoritiesTracker<P, Block, Client>,
 }
 
 impl<P, Client, Block, CIDP> Verifier<P, Client, Block, CIDP>
@@ -105,7 +106,7 @@ where
 			create_inherent_data_providers: inherent_data_provider,
 			defender: Mutex::new(NaiveEquivocationDefender::default()),
 			telemetry,
-			authorities_tracker: AuthoritiesTracker::new(client),
+			_authorities_tracker: AuthoritiesTracker::new(client),
 		}
 	}
 }
@@ -136,7 +137,7 @@ where
 		// was checked/chosen properly, e.g. by warp syncing to this block using a finality proof.
 		if block_params.state_action.skip_execution_checks() || block_params.with_state() {
 			block_params.fork_choice = Some(ForkChoiceStrategy::Custom(block_params.with_state()));
-			return Ok(block_params)
+			return Ok(block_params);
 		}
 
 		let post_hash = block_params.header.hash();
@@ -144,16 +145,15 @@ where
 
 		// check seal and update pre-hash/post-hash
 		{
-			let authorities = self
-				.authorities_tracker
-				.fetch_or_update(&block_params.header, &CompatibilityMode::None)
-				.map_err(|e| format!("Could not fetch authorities: {}", e))?;
+			let authorities = aura_internal::fetch_authorities(self.client.as_ref(), parent_hash)
+				.map_err(|e| {
+				format!("Could not fetch authorities at {:?}: {}", parent_hash, e)
+			})?;
 
-			let slot_duration = self
-				.client
-				.runtime_api()
-				.slot_duration(parent_hash)
-				.map_err(|e| e.to_string())?;
+			let mut runtime_api = self.client.runtime_api();
+			runtime_api.set_call_context(sp_core::traits::CallContext::Onchain);
+			let slot_duration =
+				runtime_api.slot_duration(parent_hash).map_err(|e| e.to_string())?;
 
 			let slot_now = slot_now(slot_duration);
 			let res = aura_internal::check_header_slot_and_seal::<Block, P>(
@@ -200,16 +200,8 @@ where
 						return Err(format!(
 							"Rejecting block {:?} due to excessive equivocations at slot",
 							post_hash,
-						))
+						));
 					}
-
-					self.authorities_tracker.import(&block_params.header).map_err(|e| {
-						format!(
-							"Could not import authorities for block {:?} at number {}: {e}",
-							block_params.header.hash(),
-							block_params.header.number(),
-						)
-					})?;
 				},
 				Err(aura_internal::SealVerificationError::Deferred(hdr, slot)) => {
 					telemetry!(
@@ -224,13 +216,14 @@ where
 					return Err(format!(
 						"Rejecting block ({:?}) from future slot {:?}",
 						post_hash, slot
-					))
+					));
 				},
-				Err(e) =>
+				Err(e) => {
 					return Err(format!(
 						"Rejecting block ({:?}) with invalid seal ({:?})",
 						post_hash, e
-					)),
+					))
+				},
 			}
 		}
 
@@ -302,7 +295,7 @@ where
 		create_inherent_data_providers,
 		defender: Mutex::new(NaiveEquivocationDefender::default()),
 		telemetry,
-		authorities_tracker: AuthoritiesTracker::new(client.clone()),
+		_authorities_tracker: AuthoritiesTracker::new(client.clone()),
 	};
 
 	BasicQueue::new(verifier, Box::new(block_import), None, spawner, registry)
@@ -337,7 +330,7 @@ mod test {
 			},
 			defender: Mutex::new(NaiveEquivocationDefender::default()),
 			telemetry: None,
-			authorities_tracker: AuthoritiesTracker::new(client.clone()),
+			_authorities_tracker: AuthoritiesTracker::new(client.clone()),
 		};
 
 		let genesis = client.info().best_hash;

@@ -83,6 +83,7 @@ fn new_node(tokio_handle: Handle) -> node_cli::service::NewFullBase {
 			rate_limit: None,
 			rate_limit_whitelisted_ips: Default::default(),
 			rate_limit_trust_proxy_headers: Default::default(),
+			request_logger_limit: 1024,
 		},
 		prometheus_config: None,
 		telemetry_endpoints: None,
@@ -103,6 +104,8 @@ fn new_node(tokio_handle: Handle) -> node_cli::service::NewFullBase {
 			config,
 			None,
 			false,
+			1,
+			sc_network_statement::config::DEFAULT_STATEMENTS_PER_SECOND,
 			|_, _| (),
 		)
 		.expect("Creates node")

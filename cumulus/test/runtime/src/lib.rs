@@ -51,9 +51,24 @@ pub mod elastic_scaling_multi_block_slot {
 	include!(concat!(env!("OUT_DIR"), "/wasm_binary_elastic_scaling_multi_block_slot.rs"));
 }
 
+pub mod elastic_scaling_12s_slot {
+	#[cfg(feature = "std")]
+	include!(concat!(env!("OUT_DIR"), "/wasm_binary_elastic_scaling_12s_slot.rs"));
+}
+
 pub mod sync_backing {
 	#[cfg(feature = "std")]
 	include!(concat!(env!("OUT_DIR"), "/wasm_binary_sync_backing.rs"));
+}
+
+pub mod async_backing {
+	#[cfg(feature = "std")]
+	include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+}
+
+pub mod slot_duration_18s {
+	#[cfg(feature = "std")]
+	include!(concat!(env!("OUT_DIR"), "/wasm_binary_slot_duration_18s.rs"));
 }
 
 mod genesis_config_presets;
@@ -77,7 +92,7 @@ use sp_runtime::{
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
-use cumulus_primitives_core::ParaId;
+use cumulus_primitives_core::{ParaId, RelayProofRequest};
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
@@ -94,6 +109,7 @@ pub use frame_support::{
 	},
 	StorageValue,
 };
+pub use frame_system::Call as SystemCall;
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
@@ -118,47 +134,49 @@ impl_opaque_keys! {
 /// The para-id used in this runtime.
 pub const PARACHAIN_ID: u32 = 100;
 
-#[cfg(all(
-	feature = "elastic-scaling-multi-block-slot",
-	not(any(
-		feature = "elastic-scaling",
-		feature = "elastic-scaling-500ms",
-		feature = "relay-parent-offset"
-	))
-))]
+#[cfg(feature = "elastic-scaling-500ms")]
+pub const BLOCK_PROCESSING_VELOCITY: u32 = 12;
+
+#[cfg(all(feature = "elastic-scaling-multi-block-slot", not(feature = "elastic-scaling-500ms")))]
 pub const BLOCK_PROCESSING_VELOCITY: u32 = 6;
 
 #[cfg(all(
-	feature = "elastic-scaling-500ms",
-	not(any(
-		feature = "elastic-scaling",
-		feature = "elastic-scaling-multi-block-slot",
-		feature = "relay-parent-offset"
-	))
+	any(feature = "elastic-scaling", feature = "relay-parent-offset"),
+	not(feature = "elastic-scaling-500ms"),
+	not(feature = "elastic-scaling-multi-block-slot")
 ))]
-pub const BLOCK_PROCESSING_VELOCITY: u32 = 12;
-
-#[cfg(any(feature = "elastic-scaling", feature = "relay-parent-offset"))]
 pub const BLOCK_PROCESSING_VELOCITY: u32 = 3;
 
 #[cfg(not(any(
 	feature = "elastic-scaling",
 	feature = "elastic-scaling-500ms",
 	feature = "elastic-scaling-multi-block-slot",
-	feature = "relay-parent-offset"
+	feature = "relay-parent-offset",
 )))]
 pub const BLOCK_PROCESSING_VELOCITY: u32 = 1;
 
-#[cfg(feature = "sync-backing")]
+#[cfg(feature = "async-backing")]
+const UNINCLUDED_SEGMENT_CAPACITY: u32 = 3;
+
+#[cfg(all(feature = "sync-backing", not(feature = "async-backing")))]
 const UNINCLUDED_SEGMENT_CAPACITY: u32 = 1;
 
 // The `+2` shouldn't be needed, https://github.com/paritytech/polkadot-sdk/issues/5260
-#[cfg(not(feature = "sync-backing"))]
+#[cfg(all(not(feature = "sync-backing"), not(feature = "async-backing")))]
 const UNINCLUDED_SEGMENT_CAPACITY: u32 = BLOCK_PROCESSING_VELOCITY * (2 + RELAY_PARENT_OFFSET) + 2;
 
-#[cfg(feature = "sync-backing")]
+#[cfg(feature = "slot-duration-18s")]
+pub const SLOT_DURATION: u64 = 18000;
+#[cfg(all(
+	any(feature = "sync-backing", feature = "elastic-scaling-12s-slot"),
+	not(feature = "slot-duration-18s")
+))]
 pub const SLOT_DURATION: u64 = 12000;
-#[cfg(not(feature = "sync-backing"))]
+#[cfg(not(any(
+	feature = "sync-backing",
+	feature = "elastic-scaling-12s-slot",
+	feature = "slot-duration-18s"
+)))]
 pub const SLOT_DURATION: u64 = 6000;
 
 const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
@@ -174,7 +192,7 @@ const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
 // details. Since macro kicks in early, it operates on AST. Thus you cannot use constants.
 // Macros are expanded top to bottom, meaning we also cannot use `cfg` here.
 
-#[cfg(not(feature = "increment-spec-version"))]
+#[cfg(all(not(feature = "increment-spec-version"), not(feature = "elastic-scaling")))]
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: alloc::borrow::Cow::Borrowed("cumulus-test-parachain"),
@@ -185,10 +203,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
-	system_version: 1,
+	system_version: 3,
 };
 
-#[cfg(feature = "increment-spec-version")]
+#[cfg(any(feature = "increment-spec-version", feature = "elastic-scaling"))]
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: alloc::borrow::Cow::Borrowed("cumulus-test-parachain"),
@@ -199,7 +217,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
-	system_version: 1,
+	system_version: 3,
 };
 
 pub const EPOCH_DURATION_IN_BLOCKS: u32 = 10 * MINUTES;
@@ -231,10 +249,12 @@ const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
 );
 
 parameter_types! {
+	/// Target number of blocks per relay chain slot.
+	pub const NumberOfBlocksPerRelaySlot: u32 = 12;
 	pub const BlockHashCount: BlockNumber = 250;
 	pub const Version: RuntimeVersion = VERSION;
 	pub RuntimeBlockLength: BlockLength =
-		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+		BlockLength::builder().max_length(10 * 1024 * 1024).max_header_size(5 * 1024 * 1024).build();
 	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
 		.base_block(BlockExecutionWeight::get())
 		.for_class(DispatchClass::all(), |weights| {
@@ -276,7 +296,7 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type SingleBlockMigrations = TestOnRuntimeUpgrade;
+	type SingleBlockMigrations = SingleBlockMigrations;
 }
 
 impl cumulus_pallet_weight_reclaim::Config for Runtime {
@@ -368,8 +388,8 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type WeightInfo = ();
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
-	type OnSystemEvent = ();
-	type OutboundXcmpMessageSource = ();
+	type OnSystemEvent = TestPallet;
+	type OutboundXcmpMessageSource = TestPallet;
 	// Ignore all DMP messages by enqueueing them into `()`:
 	type DmpQueue = frame_support::traits::EnqueueWithOrigin<(), sp_core::ConstU8<0>>;
 	type ReservedDmpWeight = ();
@@ -465,13 +485,17 @@ pub type Executive = frame_executive::Executive<
 	Runtime,
 	AllPalletsWithSystem,
 >;
+
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
 
-pub struct TestOnRuntimeUpgrade;
+/// Migration to verify that runtime upgrade hooks are working correctly.
+///
+/// This checks that the test_pallet runtime upgrade key was set in genesis.
+pub struct VerifyRuntimeUpgrade;
 
-impl OnRuntimeUpgrade for TestOnRuntimeUpgrade {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+impl OnRuntimeUpgrade for VerifyRuntimeUpgrade {
+	fn on_runtime_upgrade() -> Weight {
 		assert_eq!(
 			sp_io::storage::get(test_pallet::TEST_RUNTIME_UPGRADE_KEY),
 			Some(vec![1, 2, 3, 4].into())
@@ -479,6 +503,15 @@ impl OnRuntimeUpgrade for TestOnRuntimeUpgrade {
 		Weight::from_parts(1, 0)
 	}
 }
+
+/// Single-block migrations for the test runtime.
+///
+/// These migrations execute immediately and entirely at the beginning of the block following
+/// a runtime upgrade. They must be lightweight enough to complete within a single block.
+pub type SingleBlockMigrations = (
+	// Verify that runtime upgrade hooks are working correctly.
+	VerifyRuntimeUpgrade,
+);
 
 decl_runtime_apis! {
 	pub trait GetLastTimestamp {
@@ -493,7 +526,7 @@ impl_runtime_apis! {
 			VERSION
 		}
 
-		fn execute_block(block: Block) {
+		fn execute_block(block: <Block as BlockT>::LazyBlock) {
 			Executive::execute_block(block)
 		}
 
@@ -563,7 +596,7 @@ impl_runtime_apis! {
 			data.create_extrinsics()
 		}
 
-		fn check_inherents(block: Block, data: sp_inherents::InherentData) -> sp_inherents::CheckInherentsResult {
+		fn check_inherents(block: <Block as BlockT>::LazyBlock, data: sp_inherents::InherentData) -> sp_inherents::CheckInherentsResult {
 			data.check_extrinsics(&block)
 		}
 	}
@@ -591,8 +624,8 @@ impl_runtime_apis! {
 			SessionKeys::decode_into_raw_public_keys(&encoded)
 		}
 
-		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
-			SessionKeys::generate(seed)
+		fn generate_session_keys(owner: Vec<u8>, seed: Option<Vec<u8>>) -> sp_session::OpaqueGeneratedSessionKeys {
+			SessionKeys::generate(&owner, seed).into()
 		}
 	}
 
@@ -627,6 +660,25 @@ impl_runtime_apis! {
 			ParachainInfo::parachain_id()
 		}
 
+	}
+
+	impl cumulus_primitives_core::TargetBlockRate<Block> for Runtime {
+		fn target_block_rate() -> u32 {
+			1
+		}
+	}
+
+	impl cumulus_primitives_core::KeyToIncludeInRelayProof<Block> for Runtime {
+		fn keys_to_prove() -> cumulus_primitives_core::RelayProofRequest {
+			use cumulus_primitives_core::RelayStorageKey;
+
+			RelayProofRequest {
+				keys: vec![
+					// Request a key to verify its inclusion in the proof.
+					RelayStorageKey::Top(test_pallet::relay_alice_account_key()),
+				],
+			}
+		}
 	}
 }
 

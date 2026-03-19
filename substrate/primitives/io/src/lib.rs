@@ -135,15 +135,8 @@ use sp_externalities::{Externalities, ExternalitiesExt};
 
 pub use sp_externalities::MultiRemovalResults;
 
-#[cfg(all(not(feature = "disable_allocator"), substrate_runtime, target_family = "wasm"))]
-mod global_alloc_wasm;
-
-#[cfg(all(
-	not(feature = "disable_allocator"),
-	substrate_runtime,
-	any(target_arch = "riscv32", target_arch = "riscv64")
-))]
-mod global_alloc_riscv;
+#[cfg(all(not(feature = "disable_allocator"), substrate_runtime))]
+mod global_alloc;
 
 #[cfg(not(substrate_runtime))]
 const LOG_TARGET: &str = "runtime::io";
@@ -945,7 +938,7 @@ pub trait Crypto {
 			use ed25519_dalek::Verifier;
 
 			let Ok(public_key) = ed25519_dalek::VerifyingKey::from_bytes(&pub_key.0) else {
-				return false
+				return false;
 			};
 
 			let sig = ed25519_dalek::Signature::from_bytes(&sig.0);
@@ -1486,7 +1479,7 @@ pub trait Hashing {
 /// Interface that provides transaction indexing API.
 #[runtime_interface]
 pub trait TransactionIndex {
-	/// Add transaction index. Returns indexed content hash.
+	/// Indexes the specified transaction for the given `extrinsic` and `context_hash`.
 	fn index(
 		&mut self,
 		extrinsic: u32,
@@ -1496,7 +1489,8 @@ pub trait TransactionIndex {
 		self.storage_index_transaction(extrinsic, &context_hash, size);
 	}
 
-	/// Conduct a 512-bit Keccak hash.
+	/// Renews the transaction index entry for the given `extrinsic` using the provided
+	/// `context_hash`.
 	fn renew(&mut self, extrinsic: u32, context_hash: PassPointerAndReadCopy<[u8; 32], 32>) {
 		self.storage_renew_transaction_index(extrinsic, &context_hash);
 	}
@@ -2088,9 +2082,9 @@ mod tests {
 
 		t.execute_with(|| {
 			// We can switch to this once we enable v3 of the `clear_prefix`.
-			//assert!(matches!(
-			//	storage::clear_prefix(b":abc", None),
-			//	MultiRemovalResults::NoneLeft { db: 2, total: 2 }
+			// assert!(matches!(
+			// 	storage::clear_prefix(b":abc", None),
+			// 	MultiRemovalResults::NoneLeft { db: 2, total: 2 }
 			//));
 			assert!(matches!(
 				storage::clear_prefix(b":abc", None),
@@ -2103,9 +2097,9 @@ mod tests {
 			assert!(storage::get(b":abc").is_none());
 
 			// We can switch to this once we enable v3 of the `clear_prefix`.
-			//assert!(matches!(
-			//	storage::clear_prefix(b":abc", None),
-			//	MultiRemovalResults::NoneLeft { db: 0, total: 0 }
+			// assert!(matches!(
+			// 	storage::clear_prefix(b":abc", None),
+			// 	MultiRemovalResults::NoneLeft { db: 0, total: 0 }
 			//));
 			assert!(matches!(
 				storage::clear_prefix(b":abc", None),
@@ -2125,7 +2119,7 @@ mod tests {
 	#[test]
 	fn use_dalek_ext_works() {
 		let mut ext = BasicExternalities::default();
-		ext.register_extension(UseDalekExt::default());
+		ext.register_extension(UseDalekExt);
 
 		// With dalek the zero signature should fail to verify.
 		ext.execute_with(|| {
@@ -2141,7 +2135,7 @@ mod tests {
 	#[test]
 	fn dalek_should_not_panic_on_invalid_signature() {
 		let mut ext = BasicExternalities::default();
-		ext.register_extension(UseDalekExt::default());
+		ext.register_extension(UseDalekExt);
 
 		ext.execute_with(|| {
 			let mut bytes = [0u8; 64];

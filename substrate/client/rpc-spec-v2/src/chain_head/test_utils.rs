@@ -23,10 +23,10 @@ use sc_client_api::{
 	execution_extensions::ExecutionExtensions, BlockBackend, BlockImportNotification,
 	BlockchainEvents, CallExecutor, ChildInfo, ExecutorProvider, FinalityNotification,
 	FinalityNotifications, FinalizeSummary, ImportNotifications, KeysIter, MerkleValue, PairsIter,
-	StorageData, StorageEventStream, StorageKey, StorageProvider,
+	StaleBlock, StorageData, StorageEventStream, StorageKey, StorageProvider,
 };
 use sc_utils::mpsc::{tracing_unbounded, TracingUnboundedSender};
-use sp_api::{CallApiAt, CallApiAtParams};
+use sp_api::{CallApiAt, CallApiAtParams, CallContext};
 use sp_blockchain::{BlockStatus, CachedHeaderMetadata, HeaderBackend, HeaderMetadata, Info};
 use sp_consensus::BlockOrigin;
 use sp_runtime::{
@@ -75,7 +75,7 @@ impl<Client> ChainHeadMockClient<Client> {
 	}
 
 	/// Trigger the import stram from a header and a list of stale heads.
-	pub async fn trigger_finality_stream(&self, header: Header, stale_heads: Vec<Hash>) {
+	pub async fn trigger_finality_stream(&self, header: Header, stale_blocks: Vec<Hash>) {
 		// Ensure the client called the `finality_notification_stream`.
 		while self.finality_sinks.lock().is_empty() {
 			tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -83,8 +83,14 @@ impl<Client> ChainHeadMockClient<Client> {
 
 		// Build the notification.
 		let (sink, _stream) = tracing_unbounded("test_sink", 100_000);
-		let summary =
-			FinalizeSummary { header: header.clone(), finalized: vec![header.hash()], stale_heads };
+		let summary = FinalizeSummary {
+			header: header.clone(),
+			finalized: vec![header.hash()],
+			stale_blocks: stale_blocks
+				.into_iter()
+				.map(|h| StaleBlock { hash: h, is_head: false })
+				.collect(),
+		};
 		let notification = FinalityNotification::from_summary(summary, sink);
 
 		for sink in self.finality_sinks.lock().iter_mut() {
@@ -235,8 +241,12 @@ impl<Block: BlockT, Client: CallApiAt<Block>> CallApiAt<Block> for ChainHeadMock
 		self.client.call_api_at(params)
 	}
 
-	fn runtime_version_at(&self, hash: Block::Hash) -> Result<RuntimeVersion, sp_api::ApiError> {
-		self.client.runtime_version_at(hash)
+	fn runtime_version_at(
+		&self,
+		hash: Block::Hash,
+		call_context: CallContext,
+	) -> Result<RuntimeVersion, sp_api::ApiError> {
+		self.client.runtime_version_at(hash, call_context)
 	}
 
 	fn state_at(&self, at: Block::Hash) -> Result<Self::StateBackend, sp_api::ApiError> {

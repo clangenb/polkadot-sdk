@@ -79,6 +79,15 @@ pub struct ImportSummary<Block: BlockT> {
 	pub import_notification_action: ImportNotificationAction,
 }
 
+/// A stale block.
+#[derive(Clone, Debug)]
+pub struct StaleBlock<Block: BlockT> {
+	/// The hash of this block.
+	pub hash: Block::Hash,
+	/// Is this a head?
+	pub is_head: bool,
+}
+
 /// Finalization operation summary.
 ///
 /// Contains information about the block that just got finalized,
@@ -87,10 +96,11 @@ pub struct FinalizeSummary<Block: BlockT> {
 	/// Last finalized block header.
 	pub header: Block::Header,
 	/// Blocks that were finalized.
+	///
 	/// The last entry is the one that has been explicitly finalized.
 	pub finalized: Vec<Block::Hash>,
-	/// Heads that became stale during this finalization operation.
-	pub stale_heads: Vec<Block::Hash>,
+	/// Blocks that became stale during this finalization operation.
+	pub stale_blocks: Vec<StaleBlock<Block>>,
 }
 
 /// Import operation wrapper.
@@ -165,6 +175,16 @@ pub trait BlockImportOperation<Block: BlockT> {
 	fn state(&self) -> sp_blockchain::Result<Option<&Self::State>>;
 
 	/// Append block data to the transaction.
+	///
+	/// - `header`: The block header.
+	/// - `body`: The block body (extrinsics), if available.
+	/// - `indexed_body`: Raw extrinsic data to be stored in the transaction index, keyed by their
+	///   hash.
+	/// - `justifications`: Block justifications, e.g. finality proofs.
+	/// - `state`: Whether this is a normal block, the new best block, or a newly finalized block.
+	/// - `register_as_leaf`: Whether to add the block to the leaf set. Blocks imported during warp
+	///   sync are stored in the database but should not be registered as leaves, since they are
+	///   historical blocks and not candidates for chain progression.
 	fn set_block_data(
 		&mut self,
 		header: Block::Header,
@@ -172,6 +192,7 @@ pub trait BlockImportOperation<Block: BlockT> {
 		indexed_body: Option<Vec<Vec<u8>>>,
 		justifications: Option<Justifications>,
 		state: NewBlockState,
+		register_as_leaf: bool,
 	) -> sp_blockchain::Result<()>;
 
 	/// Inject storage data into the database.
