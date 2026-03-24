@@ -41,8 +41,8 @@ use sp_runtime::{
 /// asset with a specific ID.
 #[derive(
 	Decode, DecodeWithMemTracking, Encode, Default, MaxEncodedLen, TypeInfo, Clone, Debug, Eq,
+	serde::Serialize, serde::Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum NativeOrWithId<AssetId>
 where
 	AssetId: Ord,
