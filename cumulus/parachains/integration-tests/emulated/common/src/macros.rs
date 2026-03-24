@@ -877,8 +877,7 @@ macro_rules! test_can_estimate_and_pay_exact_fees {
 			// Get the final execution fees at the destination.
 			//
 			// Note: We need to do this after resetting the externalities to get an accurate value here.
-			// This is because the dry-run on asset hub does affect the liquidity pool distribution on PenpalB
-			// which affects the assets amount we have to pay.
+			// Workaround for https://github.com/paritytech/polkadot-sdk/issues/11486.
 			let mut final_execution_fees = 0;
 			<$receiver_para as $crate::macros::TestExt>::execute_with(|| {
 				type Runtime = <$receiver_para as $crate::macros::Chain>::Runtime;
