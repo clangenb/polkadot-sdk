@@ -101,7 +101,7 @@ pub fn genesis() -> Storage {
 			assets: vec![
 				// PenpalA's native asset representation
 				(PenpalALocation::get(), PenpalASiblingSovereignAccount::get(), true, ED),
-				// // PenpalB's native asset representation
+				// PenpalB's native asset representation
 				(PenpalBLocation::get(), PenpalBSiblingSovereignAccount::get(), true, ED),
 				(
 					PenpalAPen2TeleportableAssetLocation::get(),
