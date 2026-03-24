@@ -8,6 +8,7 @@ doc:
     Essentially, the main driver of all changes is that we adjust the Penpal runtime as follows:
     * Make the native token the base token for buying weight (before it was a hybrid set up, probably not 100% intentional).
     * Merge the `Assets` and the `ForeignAssets` pallet into one pallet called `Assets`, as the local assets can also be identified with a location starting with `parents: 0`.
+    * Give the pallet-asset-conversion a genesis config so that we can easily set up pools at genesis instead of redundantly calling the setup macro with the same args.
 
 
     ### Test Changes
@@ -19,12 +20,16 @@ doc:
     * The rest should only be renamings.
 crates:
 - name: penpal-runtime
-  bump: major
+  bump: minor
 - name: frame-support
   bump: minor
 - name: parachains-common
   bump: minor
 - name: emulated-integration-tests-common
-  bump: major
+  bump: minor
 - name: xcm-emulator
+  bump: minor
+- name: cumulus-primitives-utility
+  bump: minor
+- name: pallet-asset-conversion
   bump: minor
