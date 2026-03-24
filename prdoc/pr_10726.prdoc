@@ -20,16 +20,14 @@ doc:
     * The rest should only be renamings.
 crates:
 - name: penpal-runtime
-  bump: minor
+  bump: major
 - name: frame-support
   bump: minor
 - name: parachains-common
   bump: minor
 - name: emulated-integration-tests-common
-  bump: minor
+  bump: major
 - name: xcm-emulator
-  bump: minor
-- name: cumulus-primitives-utility
   bump: minor
 - name: pallet-asset-conversion
   bump: minor
