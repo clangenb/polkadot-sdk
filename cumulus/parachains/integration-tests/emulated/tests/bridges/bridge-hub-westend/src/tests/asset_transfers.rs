@@ -68,13 +68,6 @@ fn set_up_wnds_for_penpal_westend_through_ahw_to_ahr(
 		amount * 2,
 	);
 
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(
-		PenpalB,
-		wnd_at_westend_parachains.clone(),
-		PenpalAssetOwner::get()
-	);
-
 	(wnd_at_westend_parachains, wnd_at_asset_hub_rococo)
 }
 
@@ -908,10 +901,6 @@ fn send_back_rocs_from_penpal_westend_through_asset_hub_westend_to_asset_hub_roc
 		sender.clone(),
 		amount,
 	);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalA, Location::parent(), PenpalAssetOwner::get());
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
 
 	// Create and fund bridged ROCs on Westend Penpal
 	PenpalB::force_create_foreign_asset(

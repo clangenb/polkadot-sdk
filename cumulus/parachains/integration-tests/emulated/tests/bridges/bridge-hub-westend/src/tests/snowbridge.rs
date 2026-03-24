@@ -169,9 +169,6 @@ fn send_weth_from_ethereum_to_penpal() {
 	// Fund AssetHub sovereign account so it can pay execution fees for the asset transfer
 	BridgeHubWestend::fund_accounts(vec![(asset_hub_sovereign.clone(), INITIAL_FUND)]);
 
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
-
 	// Fund PenPal receiver (covering ED)
 	let native_id: Location = Parent.into();
 	let receiver: AccountId = [
@@ -711,9 +708,6 @@ fn send_token_from_ethereum_to_penpal() {
 	BridgeHubWestend::fund_accounts(vec![(asset_hub_sovereign.clone(), INITIAL_FUND)]);
 	// Fund PenPal receiver (covering ED)
 	PenpalB::fund_accounts(vec![(PenpalBReceiver::get(), INITIAL_FUND)]);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
 
 	PenpalB::execute_with(|| {
 		assert_ok!(<PenpalB as Chain>::System::set_storage(
@@ -1634,9 +1628,6 @@ fn transfer_penpal_teleport_enabled_asset() {
 	);
 	AssetHubWestend::fund_accounts(vec![(penpal_sovereign.clone(), INITIAL_FUND)]);
 	AssetHubWestend::fund_accounts(vec![(snowbridge_sovereign(), INITIAL_FUND)]);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
 
 	// Register token
 	BridgeHubWestend::execute_with(|| {

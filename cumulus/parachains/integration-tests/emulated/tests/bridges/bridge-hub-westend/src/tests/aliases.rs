@@ -43,9 +43,6 @@ fn account_on_sibling_syschain_aliases_into_same_local_account() {
 		fees * 10,
 	);
 
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
-
 	// On Bridge Hub we don't want to support aliasing from other chains: there is no real world
 	// demand for it, only low-level power users (like relayers) directly interact with Bridge
 	// Hub. They don't need aliasing to operate cross-chain they can operate locally.
@@ -76,9 +73,6 @@ fn account_on_sibling_syschain_cannot_alias_into_different_local_account() {
 		origin.clone(),
 		fees * 10,
 	);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
 
 	// Aliasing different account on different chains
 	test_cross_chain_alias!(
@@ -197,9 +191,6 @@ fn authorized_cross_chain_aliases() {
 	PenpalB::mint_foreign_asset(pal_admin.clone(), Location::parent(), origin.clone(), fees * 10);
 	PenpalB::mint_foreign_asset(pal_admin, Location::parent(), bad_origin.clone(), fees * 10);
 	BridgeHubWestend::fund_accounts(vec![(target.clone(), fees * 10)]);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
 
 	// let's authorize `origin` on Penpal to alias `target` on BridgeHub
 	BridgeHubWestend::execute_with(|| {

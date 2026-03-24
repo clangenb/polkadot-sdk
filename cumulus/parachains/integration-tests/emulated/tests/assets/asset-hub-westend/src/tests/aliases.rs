@@ -42,9 +42,6 @@ fn account_on_sibling_syschain_aliases_into_same_local_account() {
 		fees * 10,
 	);
 
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
-
 	// On Asset Hub we don't want to support aliasing from other chains:
 	// - there is no real world demand for it, the direction is usually reversed, users already have
 	//   accounts on AH and want to use them cross-chain on other chains,
@@ -82,9 +79,6 @@ fn account_on_sibling_syschain_cannot_alias_into_different_local_account() {
 		origin.clone(),
 		fees * 10,
 	);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
 
 	// Aliasing different account on different chains
 	test_cross_chain_alias!(
@@ -212,9 +206,6 @@ fn authorized_cross_chain_aliases() {
 	PenpalB::mint_foreign_asset(pal_admin.clone(), Location::parent(), origin.clone(), fees * 10);
 	PenpalB::mint_foreign_asset(pal_admin, Location::parent(), bad_origin.clone(), fees * 10);
 	AssetHubWestend::fund_accounts(vec![(target.clone(), fees * 10)]);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
 
 	// let's authorize `origin` on Penpal to alias `target` on AssetHub
 	AssetHubWestend::execute_with(|| {

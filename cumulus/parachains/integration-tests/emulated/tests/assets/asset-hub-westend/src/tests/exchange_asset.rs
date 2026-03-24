@@ -56,13 +56,6 @@ fn exchange_asset_from_penpal_via_asset_hub_back_to_penpal() {
 		20_000_000_000
 	);
 
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(
-		PenpalA,
-		wnd_from_parachain_pov.clone(),
-		PenpalAssetOwner::get()
-	);
-
 	// Query initial balances
 	let sender_usdt_on_penpal_before =
 		assets_balance_on!(PenpalA, usdt_penpal_pov.clone(), &sender);

@@ -777,13 +777,6 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 	let relay_native_asset_location = RelayLocation::get();
 	let receiver = PenpalAReceiver::get();
 
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(
-		PenpalA,
-		relay_native_asset_location.clone(),
-		PenpalAssetOwner::get()
-	);
-
 	// Init Test
 	let test_args = TestContext {
 		sender,
@@ -918,9 +911,6 @@ fn reserve_transfer_native_asset_from_asset_hub_to_para() {
 	// Init values for Parachain
 	let system_para_native_asset_location = RelayLocation::get();
 	let receiver = PenpalAReceiver::get();
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalA, Location::parent(), PenpalAssetOwner::get());
 
 	// Init Test
 	let test_args = TestContext {
@@ -1093,13 +1083,6 @@ fn reserve_transfer_multiple_assets_from_asset_hub_to_para() {
 	let receiver = PenpalAReceiver::get();
 	let system_para_native_asset_location = RelayLocation::get();
 	let system_para_foreign_asset_location = PenpalLocalReservableFromAssetHub::get();
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(
-		PenpalA,
-		system_para_native_asset_location.clone(),
-		PenpalAssetOwner::get()
-	);
 
 	// Init Test
 	let para_test_args = TestContext {
@@ -1307,19 +1290,6 @@ fn reserve_transfer_native_asset_from_para_to_para_through_relay() {
 		relay_native_asset_location.clone(),
 		sender.clone(),
 		amount_to_send * 2,
-	);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(
-		PenpalA,
-		relay_native_asset_location.clone(),
-		PenpalAssetOwner::get()
-	);
-
-	create_foreign_pool_with_native_on!(
-		PenpalB,
-		relay_native_asset_location.clone(),
-		PenpalAssetOwner::get()
 	);
 
 	// fund the Parachain Origin's SA on Relay Chain with the native tokens held in reserve

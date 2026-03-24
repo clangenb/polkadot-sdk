@@ -16,9 +16,7 @@
 //! Tests related to XCM aliasing.
 
 use crate::imports::*;
-use emulated_integration_tests_common::{
-	create_foreign_pool_with_native_on, macros::AccountId, test_cross_chain_alias,
-};
+use emulated_integration_tests_common::{macros::AccountId, test_cross_chain_alias};
 use frame_support::traits::ContainsPair;
 use xcm::latest::Junctions::*;
 
@@ -43,9 +41,6 @@ fn account_on_sibling_syschain_aliases_into_same_local_account() {
 		origin.clone(),
 		fees * 10,
 	);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
 
 	// Aliasing same account on different chains
 	test_cross_chain_alias!(
@@ -80,9 +75,6 @@ fn account_on_sibling_syschain_cannot_alias_into_different_local_account() {
 		origin.clone(),
 		fees * 10,
 	);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
 
 	// Aliasing different account on different chains
 	test_cross_chain_alias!(
@@ -209,9 +201,6 @@ fn authorized_cross_chain_aliases() {
 	let pal_admin = <PenpalB as Chain>::RuntimeOrigin::signed(PenpalAssetOwner::get());
 	PenpalB::mint_foreign_asset(pal_admin.clone(), Location::parent(), origin.clone(), fees * 10);
 	PenpalB::mint_foreign_asset(pal_admin, Location::parent(), bad_origin.clone(), fees * 10);
-
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
 
 	PeopleWestend::fund_accounts(vec![(target.clone(), fees * 10)]);
 

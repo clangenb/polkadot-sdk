@@ -179,18 +179,6 @@ fn multi_hop_works() {
 		amount_to_send * 2,
 	);
 
-	create_foreign_pool_with_native_on!(
-		PenpalA,
-		relay_native_asset_location.clone(),
-		PenpalAssetOwner::get()
-	);
-
-	create_foreign_pool_with_native_on!(
-		PenpalB,
-		relay_native_asset_location.clone(),
-		PenpalAssetOwner::get()
-	);
-
 	// fund the Parachain Origin's SA on AssetHub with the native tokens held in reserve.
 	AssetHubWestend::fund_accounts(vec![(sov_of_sender_on_ah.clone(), amount_to_send * 2)]);
 
@@ -297,18 +285,6 @@ fn multi_hop_works() {
 		relay_native_asset_location.clone(),
 		sender.clone(),
 		amount_to_send * 2,
-	);
-
-	create_foreign_pool_with_native_on!(
-		PenpalA,
-		relay_native_asset_location.clone(),
-		PenpalAssetOwner::get()
-	);
-
-	create_foreign_pool_with_native_on!(
-		PenpalB,
-		relay_native_asset_location.clone(),
-		PenpalAssetOwner::get()
 	);
 
 	// Get the final execution fees at the destination.

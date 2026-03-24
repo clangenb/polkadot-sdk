@@ -540,13 +540,6 @@ pub fn do_bidirectional_teleport_foreign_assets_between_para_and_asset_hub_using
 		fee_amount_to_send * 2,
 	);
 
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(
-		PenpalA,
-		system_para_native_asset_location.clone(),
-		PenpalAssetOwner::get()
-	);
-
 	// No need to create the asset (only mint) as it exists in genesis.
 	PenpalA::mint_foreign_asset(
 		<PenpalA as Chain>::RuntimeOrigin::signed(asset_owner.clone()),

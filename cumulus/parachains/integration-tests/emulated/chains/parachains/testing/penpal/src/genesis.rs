@@ -24,7 +24,8 @@ use emulated_integration_tests_common::{
 };
 use parachains_common::{AccountId, Balance};
 use penpal_runtime::xcm_config::{
-	LocalPen2Asset, LocalReservableFromAssetHub, RelayLocation, UsdtFromAssetHub,
+	LocalPen2Asset, LocalReservableFromAssetHub, PenpalNativeCurrency, RelayLocation,
+	UsdtFromAssetHub,
 };
 // Penpal
 pub const PARA_ID_A: u32 = 2000;
@@ -82,7 +83,23 @@ pub fn genesis(para_id: u32) -> Storage {
 				// USDT from AssetHub
 				(UsdtFromAssetHub::get(), PenpalAssetOwner::get(), true, USDT_ED),
 			],
+			accounts: vec![
+				// Relay tokens for the pool liquidity provider.
+				(RelayLocation::get(), PenpalAssetOwner::get(), 10_000_000_000_000),
+			],
 			..Default::default()
+		},
+		asset_conversion: penpal_runtime::AssetConversionConfig {
+			pools: vec![
+				// Relay token pool (native PEN <-> relay WND) for XCM fee payment.
+				(
+					PenpalNativeCurrency::get(),
+					RelayLocation::get(),
+					PenpalAssetOwner::get(),
+					1_000_000_000_000,
+					2_000_000_000_000,
+				),
+			],
 		},
 		..Default::default()
 	};

@@ -746,10 +746,6 @@ macro_rules! test_can_estimate_and_pay_exact_fees {
 				$amount * 2,
 			);
 
-			// Create pools to pay with `$asset_id`
-			create_foreign_pool_with_native_on!($sender_para, Location::from($asset_id), asset_owner.clone());
-			create_foreign_pool_with_native_on!($receiver_para, Location::from($asset_id), asset_owner.clone());
-
 			// Fund the parachain origin's SA on Asset Hub with the native tokens.
 			// TODO: consider fund_accounts to be part of xcm_emulator::Chain trait
 			$asset_hub::fund_accounts(vec![(sov_of_sender_on_ah.clone(), $amount * 2)]);
@@ -875,10 +871,6 @@ macro_rules! test_can_estimate_and_pay_exact_fees {
 				$amount * 2,
 			);
 			$sender_para::fund_accounts(vec![(sender.clone(), $amount * 2)]);
-
-			// Create pools to pay with `$asset_id`
-			create_foreign_pool_with_native_on!($sender_para, Location::from($asset_id), asset_owner.clone());
-			create_foreign_pool_with_native_on!($receiver_para, Location::from($asset_id), asset_owner.clone());
 
 			$asset_hub::fund_accounts(vec![(sov_of_sender_on_ah, $amount * 2)]);
 

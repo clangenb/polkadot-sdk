@@ -195,9 +195,6 @@ fn transfer_foreign_assets_from_asset_hub_to_para() {
 		));
 	});
 
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalA, Location::parent(), PenpalAssetOwner::get());
-
 	PenpalA::force_create_foreign_asset(
 		roc_at_westend_parachains.clone(),
 		assets_owner.clone(),
@@ -536,9 +533,6 @@ fn transfer_foreign_assets_from_para_to_para_through_asset_hub() {
 		vec![],
 	);
 
-	// We need to create a pool to pay execution fees in WND
-	create_foreign_pool_with_native_on!(PenpalB, Location::parent(), PenpalAssetOwner::get());
-
 	// fund Parachain's sender account
 	PenpalA::mint_foreign_asset(
 		<PenpalA as Chain>::RuntimeOrigin::signed(assets_owner.clone()),
@@ -733,9 +727,6 @@ fn transfer_native_asset_from_relay_to_penpal_through_asset_hub() {
 	// Init values for Parachain
 	let relay_native_asset_location = RelayLocation::get();
 	let receiver = PenpalAReceiver::get();
-
-	// Create pool with WND to be able to pay execution in WND
-	create_foreign_pool_with_native_on!(PenpalA, RelayLocation::get(), PenpalAssetOwner::get());
 
 	// Init Test
 	let test_args = TestContext {
