@@ -143,10 +143,11 @@ mod benchmarking {
 	// because the `TestDefaultConfig` cannot supply an implementation when the AssetId == Location.
 	pub struct MockBenchmarkHelper;
 
-	impl pallet_assets::BenchmarkHelper<Location> for MockBenchmarkHelper {
+	impl pallet_assets::BenchmarkHelper<Location, ()> for MockBenchmarkHelper {
 		fn create_asset_id_parameter(_: u32) -> Location {
 			Location::here()
 		}
+		fn create_reserve_id_parameter(_: u32) {}
 	}
 
 	impl pallet_asset_conversion::BenchmarkHelper<Location> for MockBenchmarkHelper {
