@@ -102,8 +102,8 @@ fn hop_assertions(test: ParaToParaThroughAHTest) {
 				pallet_balances::Event::Withdraw { amount, .. }
 			) => {
 				// Depends on: XCM execution fees + delivery fees + liquidity pool
-			// swap overhead at the destination.
-			amount: *amount >= test.args.amount * 80/100,
+				// swap overhead at the destination.
+				amount: *amount >= test.args.amount * 80/100,
 			},
 		]
 	);
