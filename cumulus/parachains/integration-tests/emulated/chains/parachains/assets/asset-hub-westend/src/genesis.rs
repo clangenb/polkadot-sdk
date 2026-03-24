@@ -99,7 +99,7 @@ pub fn genesis() -> Storage {
 		},
 		foreign_assets: asset_hub_westend_runtime::ForeignAssetsConfig {
 			assets: vec![
-				// // Penpals' native asset representation
+				// Penpals' native asset representation
 				(PenpalALocation::get(), PenpalASiblingSovereignAccount::get(), true, ED),
 				(PenpalBLocation::get(), PenpalBSiblingSovereignAccount::get(), true, ED),
 				// PenpalA's teleportable asset representation
