@@ -99,7 +99,7 @@ pub fn genesis() -> Storage {
 		},
 		foreign_assets: asset_hub_rococo_runtime::ForeignAssetsConfig {
 			assets: vec![
-				// // PenpalA's native asset representation
+				// PenpalA's native asset representation
 				(PenpalALocation::get(), PenpalASiblingSovereignAccount::get(), true, ED),
 				// // PenpalB's native asset representation
 				(PenpalBLocation::get(), PenpalBSiblingSovereignAccount::get(), true, ED),
