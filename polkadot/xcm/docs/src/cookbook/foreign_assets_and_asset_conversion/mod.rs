@@ -18,7 +18,7 @@
 //! # Foreign Assets and Asset Conversion Example
 //!
 //! This example shows how to configure a parachain (namely the Asset Para) to be able to have other
-//! parachains register their native token as foreign assets, and how the other chains actually
+//! parachains register their local tokens as foreign assets, and how the other chains actually
 //! register their token. Additionally, the example shows how we can create asset conversion pools
 //! to trade foreign assets to the Asset Para's native token, and how this setup can be used to pay
 //! XCM-execution fees in a foreign asset.
