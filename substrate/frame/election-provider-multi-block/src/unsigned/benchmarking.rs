@@ -40,7 +40,7 @@ mod benchmarks {
 			matches!(CurrentPhase::<T>::get(), Phase::Unsigned(_))
 		});
 		let call: Call<T> = OffchainWorkerMiner::<T>::mine_solution(T::MinerPages::get(), false)
-			.map(|solution| Call::submit_unsigned { paged_solution: Box::new(solution) })
+			.map(|(solution, _)| Call::submit_unsigned { paged_solution: Box::new(solution) })
 			.unwrap();
 
 		#[block]
@@ -62,7 +62,7 @@ mod benchmarks {
 			matches!(CurrentPhase::<T>::get(), Phase::Unsigned(_))
 		});
 		// TODO: we need to better ensure that this is actually worst case
-		let solution =
+		let (solution, _) =
 			OffchainWorkerMiner::<T>::mine_solution(T::MinerPages::get(), false).unwrap();
 
 		// nothing is queued

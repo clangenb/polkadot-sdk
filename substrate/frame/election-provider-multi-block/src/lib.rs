@@ -1816,7 +1816,7 @@ where
 		Self::roll_until_matches(|| Self::current_phase().is_signed());
 		// ensure snapshot is full.
 		crate::Snapshot::<T>::ensure_full_snapshot().expect("Snapshot is not full");
-		OffchainWorkerMiner::<T>::mine_solution(pages, false).expect("mine_solution failed")
+		OffchainWorkerMiner::<T>::mine_solution(pages, false).expect("mine_solution failed").0
 	}
 
 	pub(crate) fn submit_full_solution(
@@ -2392,7 +2392,7 @@ mod phase_rotation {
 
 			// but let's submit a signed solution to be verified while we're here
 			{
-				let paged = mine_full_solution().unwrap();
+				let (paged, _) = mine_full_solution().unwrap();
 				load_signed_for_verification(999, paged.clone());
 			}
 
@@ -2767,7 +2767,7 @@ mod election_provider {
 			assert!(MultiBlock::current_phase().is_signed());
 
 			// load a solution into the verifier
-			let paged = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false).unwrap();
+			let (paged, _) = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false).unwrap();
 			let score = paged.score;
 
 			// now let's submit this one by one, into the signed phase.
@@ -2863,7 +2863,7 @@ mod election_provider {
 			assert!(MultiBlock::current_phase().is_signed());
 
 			// load a solution into the verifier
-			let paged = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false).unwrap();
+			let (paged, _) = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false).unwrap();
 			let score = paged.score;
 			load_signed_for_verification_and_start(99, paged, 0);
 
@@ -2921,7 +2921,7 @@ mod election_provider {
 			assert!(MultiBlock::current_phase().is_signed());
 
 			// load a solution into the verifier
-			let paged = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false).unwrap();
+			let (paged, _) = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false).unwrap();
 			let score = paged.score;
 			load_signed_for_verification_and_start(99, paged, 0);
 
@@ -2981,7 +2981,7 @@ mod election_provider {
 			// Note: our mock runtime is configured with 1 page for the unsigned phase
 			let miner_pages = <Runtime as unsigned::Config>::MinerPages::get();
 			// Mine an unsigned solution
-			let unsigned_solution =
+			let (unsigned_solution, _) =
 				OffchainWorkerMiner::<Runtime>::mine_solution(miner_pages, true).unwrap();
 
 			// Submit the unsigned solution
@@ -3022,7 +3022,7 @@ mod election_provider {
 			let round = MultiBlock::round();
 
 			// load a solution into the verifier
-			let paged = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false).unwrap();
+			let (paged, _) = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false).unwrap();
 
 			load_signed_for_verification_and_start_and_roll_to_verified(99, paged, 0);
 
@@ -3065,7 +3065,7 @@ mod election_provider {
 			assert!(MultiBlock::current_phase().is_signed());
 
 			// load a solution into the verifier
-			let paged = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false).unwrap();
+			let (paged, _) = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false).unwrap();
 			load_signed_for_verification_and_start_and_roll_to_verified(99, paged, 0);
 
 			assert!(matches!(MultiBlock::current_phase(), Phase::SignedValidation(_)));
@@ -3282,7 +3282,7 @@ mod manage_ops {
 		ExtBuilder::full().build_and_execute(|| {
 			roll_to_signed_open();
 			let round = MultiBlock::round();
-			let paged =
+			let (paged, _) =
 				unsigned::miner::OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false)
 					.unwrap();
 			load_signed_for_verification_and_start_and_roll_to_verified(99, paged, 0);

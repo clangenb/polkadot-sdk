@@ -37,12 +37,15 @@ use frame_election_provider_support::{ExtendedBalance, NposSolver, Support, Vote
 use frame_support::{traits::Get, BoundedVec};
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
-use sp_npos_elections::EvaluateSupport;
+use sp_npos_elections::{EvaluateSupport, Winner};
 use sp_runtime::{
 	offchain::storage::{MutateStorageError, StorageValueRef},
 	traits::{SaturatedConversion, Saturating, Zero},
 };
-use sp_std::{collections::btree_map::BTreeMap, prelude::*};
+use sp_std::{
+	collections::{btree_map::BTreeMap, btree_set::BTreeSet},
+	prelude::*,
+};
 
 // TODO: we should have a fuzzer for miner that ensures no matter the parameters, it generates a
 // valid solution. Esp. for the trimming.
@@ -284,7 +287,7 @@ impl<T: MinerConfig> BaseMiner<T> {
 		MineInput { desired_targets, all_targets, voter_pages, mut pages, do_reduce, round }: MineInput<
 			T,
 		>,
-	) -> Result<PagedRawSolution<T>, MinerError<T>> {
+	) -> Result<(PagedRawSolution<T>, Vec<Winner<T::AccountId>>), MinerError<T>> {
 		pages = pages.min(T::Pages::get());
 
 		// we also build this closure early, so we can let `targets` be consumed.
@@ -300,7 +303,7 @@ impl<T: MinerConfig> BaseMiner<T> {
 			.try_into()
 			.expect("Flattening the voters into `AllVoterPagesFlattenedOf` cannot fail; qed");
 
-		let ElectionResult { winners: _, assignments } = T::Solver::solve(
+		let ElectionResult { winners: solver_winners, assignments } = T::Solver::solve(
 			desired_targets as usize,
 			all_targets.clone().to_vec(),
 			all_voters.clone().into_inner(),
@@ -422,9 +425,15 @@ impl<T: MinerConfig> BaseMiner<T> {
 
 		// OPTIMIZATION: we do feasibility_check inside `compute_score`, and once later
 		// pre_dispatch. I think it is fine, but maybe we can improve it.
-		let score = Self::compute_score(&paged, &voter_pages, &all_targets, desired_targets)
-			.map_err::<MinerError<T>, _>(Into::into)?;
+		let (score, surviving_winners) =
+			Self::compute_score(&paged, &voter_pages, &all_targets, desired_targets)
+				.map_err::<MinerError<T>, _>(Into::into)?;
 		paged.score = score;
+
+		let winners: Vec<Winner<T::AccountId>> = solver_winners
+			.into_iter()
+			.filter(|w| surviving_winners.contains(&w.who))
+			.collect();
 
 		miner_log!(
 			debug,
@@ -437,7 +446,7 @@ impl<T: MinerConfig> BaseMiner<T> {
 			paged.using_encoded(|b| b.len())
 		);
 
-		Ok(paged)
+		Ok((paged, winners))
 	}
 
 	/// perform the feasibility check on all pages of a solution, returning `Ok(())` if all good and
@@ -492,7 +501,7 @@ impl<T: MinerConfig> BaseMiner<T> {
 		paged_voters: &AllVoterPagesOf<T>,
 		all_targets: &BoundedVec<T::AccountId, T::TargetSnapshotPerBlock>,
 		desired_targets: u32,
-	) -> Result<ElectionScore, MinerError<T>> {
+	) -> Result<(ElectionScore, BTreeSet<T::AccountId>), MinerError<T>> {
 		let all_supports =
 			Self::check_feasibility(paged_solution, paged_voters, all_targets, desired_targets)?;
 		let mut total_backings: BTreeMap<T::AccountId, ExtendedBalance> = BTreeMap::new();
@@ -501,12 +510,15 @@ impl<T: MinerConfig> BaseMiner<T> {
 			*backing = backing.saturating_add(support.total);
 		});
 
+		let surviving_winners: BTreeSet<T::AccountId> =
+			total_backings.keys().cloned().collect();
+
 		let all_supports = total_backings
 			.into_iter()
 			.map(|(who, total)| (who, Support { total, ..Default::default() }))
 			.collect::<Vec<_>>();
 
-		Ok((&all_supports).evaluate())
+		Ok(((&all_supports).evaluate(), surviving_winners))
 	}
 
 	fn trim_supports_max_backers_per_winner_per_page(
@@ -722,7 +734,13 @@ impl<T: Config> OffchainWorkerMiner<T> {
 	pub fn mine_solution(
 		pages: PageIndex,
 		do_reduce: bool,
-	) -> Result<PagedRawSolution<T::MinerConfig>, OffchainMinerError<T>> {
+	) -> Result<
+		(
+			PagedRawSolution<T::MinerConfig>,
+			Vec<Winner<<T::MinerConfig as MinerConfig>::AccountId>>,
+		),
+		OffchainMinerError<T>,
+	> {
 		if pages.is_zero() {
 			return Err(OffchainMinerError::<T>::ZeroPages);
 		}
@@ -747,7 +765,7 @@ impl<T: Config> OffchainWorkerMiner<T> {
 
 		// NOTE: we don't run any checks in the base miner, and run all of them via
 		// `Self::full_checks`.
-		let paged_solution = Self::mine_solution(T::MinerPages::get(), reduce)
+		let (paged_solution, _winners) = Self::mine_solution(T::MinerPages::get(), reduce)
 			.map_err::<OffchainMinerError<T>, _>(Into::into)?;
 		// check the call fully, no fingerprinting.
 		let _ = Self::check_solution(&paged_solution, None, true)?;
@@ -1018,7 +1036,7 @@ mod trimming {
 			roll_to_snapshot_created();
 
 			// now we let the miner mine something for us..
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 			assert_eq!(
 				solution.solution_pages.iter().map(|page| page.voter_count()).sum::<usize>(),
 				8
@@ -1061,7 +1079,7 @@ mod trimming {
 			roll_to_snapshot_created();
 			ensure_voters(3, 12);
 
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 
 			assert_eq!(
 				solution.solution_pages.iter().map(|page| page.voter_count()).sum::<usize>(),
@@ -1105,7 +1123,7 @@ mod trimming {
 			roll_to_snapshot_created();
 			ensure_voters(3, 12);
 
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 
 			assert_eq!(
 				solution.solution_pages.iter().map(|page| page.voter_count()).sum::<usize>(),
@@ -1147,7 +1165,7 @@ mod trimming {
 			roll_to_snapshot_created();
 			ensure_voters(3, 12);
 
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 
 			assert_eq!(
 				solution.solution_pages.iter().map(|page| page.voter_count()).sum::<usize>(),
@@ -1189,7 +1207,7 @@ mod trimming {
 			roll_to_snapshot_created();
 			ensure_voters(3, 12);
 
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 
 			load_mock_signed_and_start(solution);
 			let supports = roll_to_full_verification();
@@ -1233,7 +1251,7 @@ mod trimming {
 			roll_to_snapshot_created();
 			ensure_voters(3, 12);
 
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 
 			load_mock_signed_and_start(solution);
 			let supports = roll_to_full_verification();
@@ -1275,7 +1293,7 @@ mod trimming {
 				roll_to_snapshot_created();
 				ensure_voters(3, 12);
 
-				let solution = mine_full_solution().unwrap();
+				let (solution, _) = mine_full_solution().unwrap();
 
 				load_mock_signed_and_start(solution);
 				let supports = roll_to_full_verification();
@@ -1318,7 +1336,7 @@ mod trimming {
 				roll_to_snapshot_created();
 				ensure_voters(3, 12);
 
-				let solution = mine_full_solution().unwrap();
+				let (solution, _) = mine_full_solution().unwrap();
 
 				load_mock_signed_and_start(solution);
 				let supports = roll_to_full_verification();
@@ -1366,7 +1384,7 @@ mod trimming {
 
 				roll_to_snapshot_created();
 
-				let solution = mine_full_solution().unwrap();
+				let (solution, _) = mine_full_solution().unwrap();
 
 				// The solution should still be valid despite aggressive trimming
 				assert!(solution.solution_pages.len() > 0);
@@ -1411,7 +1429,7 @@ mod base_miner {
 			.build_unchecked()
 			.execute_with(|| {
 				roll_to_snapshot_created();
-				mine_full_solution().unwrap().score
+				mine_full_solution().unwrap().0.score
 			});
 		let score_2 = ExtBuilder::mock_signed()
 			.pages(2)
@@ -1419,7 +1437,7 @@ mod base_miner {
 			.build_unchecked()
 			.execute_with(|| {
 				roll_to_snapshot_created();
-				mine_full_solution().unwrap().score
+				mine_full_solution().unwrap().0.score
 			});
 		let score_3 = ExtBuilder::mock_signed()
 			.pages(3)
@@ -1427,7 +1445,7 @@ mod base_miner {
 			.build_unchecked()
 			.execute_with(|| {
 				roll_to_snapshot_created();
-				mine_full_solution().unwrap().score
+				mine_full_solution().unwrap().0.score
 			});
 
 		assert_eq!(score_1, score_2);
@@ -1451,7 +1469,7 @@ mod base_miner {
 				vec![1, 2, 3, 4, 5, 6, 7, 8]
 			);
 
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 			assert_eq!(paged.solution_pages.len(), 1);
 
 			// this solution must be feasible and submittable.
@@ -1487,6 +1505,32 @@ mod base_miner {
 	}
 
 	#[test]
+	fn mine_solution_returns_winners_with_round() {
+		ExtBuilder::mock_signed().pages(1).voter_per_page(8).build_and_execute(|| {
+			roll_to_snapshot_created();
+
+			let (paged, winners) = mine_full_solution().unwrap();
+
+			// winners should be non-empty and match the solution's winner count.
+			assert!(!winners.is_empty());
+			assert_eq!(
+				winners.len(),
+				paged.winner_count_single_page_target_snapshot()
+			);
+
+			// winners should be sorted by round (ascending).
+			for window in winners.windows(2) {
+				assert!(window[0].round <= window[1].round);
+			}
+
+			// all winners should have non-zero backed stake.
+			for w in &winners {
+				assert!(w.backed_stake > 0);
+			}
+		})
+	}
+
+	#[test]
 	fn mine_solution_double_page_works() {
 		ExtBuilder::mock_signed().pages(2).voter_per_page(4).build_and_execute(|| {
 			roll_to_snapshot_created();
@@ -1515,7 +1559,7 @@ mod base_miner {
 			);
 			// targets in pages.
 			assert_eq!(Snapshot::<Runtime>::targets().unwrap(), vec![10, 20, 30, 40]);
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 
 			assert_eq!(
 				paged.solution_pages,
@@ -1606,7 +1650,7 @@ mod base_miner {
 				vec![10, 20, 30, 40]
 			);
 
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 			assert_eq!(
 				paged.solution_pages,
 				vec![
@@ -1691,7 +1735,7 @@ mod base_miner {
 			);
 
 			// now we ask for just 1 page of solution.
-			let paged = mine_solution(1).unwrap();
+			let (paged, _) = mine_solution(1).unwrap();
 
 			assert_eq!(
 				paged.solution_pages,
@@ -1768,7 +1812,7 @@ mod base_miner {
 			);
 
 			// now we ask for just 1 page of solution.
-			let paged = mine_solution(2).unwrap();
+			let (paged, _) = mine_solution(2).unwrap();
 
 			// this solution must be feasible and submittable.
 			OffchainWorkerMiner::<Runtime>::base_check_solution(&paged, None, true).unwrap();
@@ -1839,12 +1883,12 @@ mod base_miner {
 			roll_to_snapshot_created();
 			let full_edges = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), false)
 				.unwrap()
-				.solution_pages
+				.0.solution_pages
 				.iter()
 				.fold(0, |acc, x| acc + x.edge_count());
 			let reduced_edges = OffchainWorkerMiner::<Runtime>::mine_solution(Pages::get(), true)
 				.unwrap()
-				.solution_pages
+				.0.solution_pages
 				.iter()
 				.fold(0, |acc, x| acc + x.edge_count());
 

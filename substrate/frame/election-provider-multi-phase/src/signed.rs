@@ -1383,7 +1383,7 @@ mod tests {
 				roll_to_signed();
 				assert!(CurrentPhase::<Runtime>::get().is_signed());
 
-				let (raw, witness, _) = MultiPhase::mine_solution().unwrap();
+				let (raw, witness, _, _) = MultiPhase::mine_solution().unwrap();
 				let solution_weight = <Runtime as MinerConfig>::solution_weight(
 					witness.voters,
 					witness.targets,

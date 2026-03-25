@@ -38,7 +38,7 @@ use frame_system::{
 use scale_info::TypeInfo;
 use sp_npos_elections::{
 	assignment_ratio_to_staked_normalized, assignment_staked_to_ratio_normalized, ElectionResult,
-	ElectionScore, EvaluateSupport,
+	ElectionScore, EvaluateSupport, Winner,
 };
 use sp_runtime::{
 	offchain::storage::{MutateStorageError, StorageValueRef},
@@ -199,21 +199,26 @@ impl<T: Config + CreateBare<Call<T>>> Pallet<T> {
 	/// The Npos Solver type, `S`, must have the same AccountId and Error type as the
 	/// [`crate::Config::Solver`] in order to create a unified return type.
 	pub fn mine_solution() -> Result<
-		(RawSolution<SolutionOf<T::MinerConfig>>, SolutionOrSnapshotSize, TrimmingStatus),
+		(
+			RawSolution<SolutionOf<T::MinerConfig>>,
+			SolutionOrSnapshotSize,
+			TrimmingStatus,
+			Vec<Winner<T::AccountId>>,
+		),
 		MinerError,
 	> {
 		let RoundSnapshot { voters, targets } =
 			Snapshot::<T>::get().ok_or(MinerError::SnapshotUnAvailable)?;
 		let desired_targets = DesiredTargets::<T>::get().ok_or(MinerError::SnapshotUnAvailable)?;
 		ensure!(desired_targets <= T::MaxWinners::get(), MinerError::TooManyDesiredTargets);
-		let (solution, score, size, is_trimmed) =
+		let (solution, score, size, is_trimmed, winners) =
 			Miner::<T::MinerConfig>::mine_solution_with_snapshot::<T::Solver>(
 				voters,
 				targets,
 				desired_targets,
 			)?;
 		let round = Round::<T>::get();
-		Ok((RawSolution { solution, score, round }, size, is_trimmed))
+		Ok((RawSolution { solution, score, round }, size, is_trimmed, winners))
 	}
 
 	/// Attempt to restore a solution from cache. Otherwise, compute it fresh. Either way, submit
@@ -330,7 +335,7 @@ impl<T: Config + CreateBare<Call<T>>> Pallet<T> {
 		(RawSolution<SolutionOf<T::MinerConfig>>, SolutionOrSnapshotSize, TrimmingStatus),
 		MinerError,
 	> {
-		let (raw_solution, witness, is_trimmed) = Self::mine_solution()?;
+		let (raw_solution, witness, is_trimmed, _winners) = Self::mine_solution()?;
 		Self::basic_checks(&raw_solution, "mined")?;
 		Ok((raw_solution, witness, is_trimmed))
 	}
@@ -461,7 +466,10 @@ impl<T: MinerConfig> Miner<T> {
 		voters: Vec<(T::AccountId, VoteWeight, BoundedVec<T::AccountId, T::MaxVotesPerVoter>)>,
 		targets: Vec<T::AccountId>,
 		desired_targets: u32,
-	) -> Result<(SolutionOf<T>, ElectionScore, SolutionOrSnapshotSize, TrimmingStatus), MinerError>
+	) -> Result<
+		(SolutionOf<T>, ElectionScore, SolutionOrSnapshotSize, TrimmingStatus, Vec<Winner<T::AccountId>>),
+		MinerError,
+	>
 	where
 		S: NposSolver<AccountId = T::AccountId>,
 	{
@@ -489,8 +497,10 @@ impl<T: MinerConfig> Miner<T> {
 		voters: Vec<(T::AccountId, VoteWeight, BoundedVec<T::AccountId, T::MaxVotesPerVoter>)>,
 		targets: Vec<T::AccountId>,
 		desired_targets: u32,
-	) -> Result<(SolutionOf<T>, ElectionScore, SolutionOrSnapshotSize, TrimmingStatus), MinerError>
-	{
+	) -> Result<
+		(SolutionOf<T>, ElectionScore, SolutionOrSnapshotSize, TrimmingStatus, Vec<Winner<T::AccountId>>),
+		MinerError,
+	> {
 		// now make some helper closures.
 		let cache = helpers::generate_voter_cache::<T>(&voters);
 		let voter_index = helpers::voter_index_fn::<T>(&cache);
@@ -506,7 +516,7 @@ impl<T: MinerConfig> Miner<T> {
 			SolutionOf::<T>::try_from(assignments).map(|s| s.encoded_size())
 		};
 
-		let ElectionResult { assignments, winners: _ } = election_result;
+		let ElectionResult { assignments, winners: solver_winners } = election_result;
 
 		// keeps track of how many edges were trimmed out.
 		let mut edges_trimmed = 0;
@@ -615,6 +625,17 @@ impl<T: MinerConfig> Miner<T> {
 		// now make solution.
 		let solution = SolutionOf::<T>::try_from(&index_assignments)?;
 
+		// filter solver winners to only those surviving in the final solution.
+		let surviving: alloc::collections::BTreeSet<T::AccountId> = solution
+			.unique_targets()
+			.into_iter()
+			.filter_map(|idx| target_at(idx))
+			.collect();
+		let winners: Vec<Winner<T::AccountId>> = solver_winners
+			.into_iter()
+			.filter(|w| surviving.contains(&w.who))
+			.collect();
+
 		// re-calc score.
 		let score = solution.clone().score(stake_of, voter_at, target_at)?;
 
@@ -628,7 +649,7 @@ impl<T: MinerConfig> Miner<T> {
 			score,
 			solution.encoded_size()
 		);
-		Ok((solution, score, size, is_trimmed))
+		Ok((solution, score, size, is_trimmed, winners))
 	}
 
 	/// Greedily reduce the size of the solution to fit into the block w.r.t length.
@@ -1352,7 +1373,7 @@ mod tests {
 			assert_eq!(DesiredTargets::<Runtime>::get().unwrap(), 2);
 
 			// mine seq_phragmen solution with 2 iters.
-			let (solution, witness, _) = MultiPhase::mine_solution().unwrap();
+			let (solution, witness, _, _) = MultiPhase::mine_solution().unwrap();
 
 			// ensure this solution is valid.
 			assert!(QueuedSolution::<Runtime>::get().is_none());
@@ -1382,6 +1403,28 @@ mod tests {
 	}
 
 	#[test]
+	fn mine_solution_returns_winners_with_round() {
+		ExtBuilder::default().build_and_execute(|| {
+			roll_to_unsigned();
+
+			let (_solution, _witness, _, winners) = MultiPhase::mine_solution().unwrap();
+
+			// winners should be non-empty.
+			assert!(!winners.is_empty());
+
+			// winners should be sorted by round (ascending).
+			for window in winners.windows(2) {
+				assert!(window[0].round <= window[1].round);
+			}
+
+			// all winners should have non-zero backed stake.
+			for w in &winners {
+				assert!(w.backed_stake > 0);
+			}
+		})
+	}
+
+	#[test]
 	fn miner_trims_weight() {
 		ExtBuilder::default()
 			.miner_weight(Weight::from_parts(100, u64::MAX))
@@ -1390,7 +1433,7 @@ mod tests {
 				roll_to_unsigned();
 				assert!(CurrentPhase::<Runtime>::get().is_unsigned());
 
-				let (raw, witness, t) = MultiPhase::mine_solution().unwrap();
+				let (raw, witness, t, _) = MultiPhase::mine_solution().unwrap();
 				let solution_weight = <Runtime as MinerConfig>::solution_weight(
 					witness.voters,
 					witness.targets,
@@ -1405,7 +1448,7 @@ mod tests {
 				// now reduce the max weight
 				<MinerMaxWeight>::set(Weight::from_parts(25, u64::MAX));
 
-				let (raw, witness, t) = MultiPhase::mine_solution().unwrap();
+				let (raw, witness, t, _) = MultiPhase::mine_solution().unwrap();
 				let solution_weight = <Runtime as MinerConfig>::solution_weight(
 					witness.voters,
 					witness.targets,
@@ -1427,7 +1470,7 @@ mod tests {
 			assert!(CurrentPhase::<Runtime>::get().is_unsigned());
 
 			// Force the number of winners to be bigger to fail
-			let (mut solution, _, _) = MultiPhase::mine_solution().unwrap();
+			let (mut solution, _, _, _) = MultiPhase::mine_solution().unwrap();
 			solution.solution.votes1[0].1 = 4;
 
 			assert_eq!(
@@ -1469,7 +1512,7 @@ mod tests {
 				let RoundSnapshot { voters, targets } = Snapshot::<Runtime>::get().unwrap();
 				let desired_targets = DesiredTargets::<Runtime>::get().unwrap();
 
-				let (raw, score, witness, _) =
+				let (raw, score, witness, _, _) =
 					Miner::<Runtime>::prepare_election_result_with_snapshot(
 						result,
 						voters.clone(),
@@ -1495,7 +1538,7 @@ mod tests {
 						distribution: vec![(10, PerU16::one())],
 					}],
 				};
-				let (raw, score, _, _) = Miner::<Runtime>::prepare_election_result_with_snapshot(
+				let (raw, score, _, _, _) = Miner::<Runtime>::prepare_election_result_with_snapshot(
 					result,
 					voters.clone(),
 					targets.clone(),
@@ -1525,7 +1568,7 @@ mod tests {
 					],
 				};
 
-				let (raw, score, _, _) = Miner::<Runtime>::prepare_election_result_with_snapshot(
+				let (raw, score, _, _, _) = Miner::<Runtime>::prepare_election_result_with_snapshot(
 					result,
 					voters.clone(),
 					targets.clone(),
@@ -1551,7 +1594,7 @@ mod tests {
 						Assignment { who: 9, distribution: vec![(10, PerU16::one())] },
 					],
 				};
-				let (raw, score, witness, _) =
+				let (raw, score, witness, _, _) =
 					Miner::<Runtime>::prepare_election_result_with_snapshot(
 						result,
 						voters.clone(),
@@ -1584,7 +1627,7 @@ mod tests {
 						},
 					],
 				};
-				let (raw, score, witness, _) =
+				let (raw, score, witness, _, _) =
 					Miner::<Runtime>::prepare_election_result_with_snapshot(
 						result,
 						voters.clone(),
@@ -1961,7 +2004,7 @@ mod tests {
 		ExtBuilder::default().max_backers_per_winner(u32::MAX).build_and_execute(|| {
 			assert_eq!(MaxBackersPerWinner::get(), u32::MAX);
 
-			let (solution, expected_score_unbounded, _, trimming_status) =
+			let (solution, expected_score_unbounded, _, trimming_status, _) =
 				Miner::<Runtime>::mine_solution_with_snapshot::<<Runtime as Config>::Solver>(
 					voters.clone(),
 					targets.clone(),
@@ -1999,7 +2042,7 @@ mod tests {
 		ExtBuilder::default().max_backers_per_winner(1).build_and_execute(|| {
 			assert_eq!(MaxBackersPerWinner::get(), 1);
 
-			let (solution, expected_score_bounded, _, trimming_status) =
+			let (solution, expected_score_bounded, _, trimming_status, _) =
 				Miner::<Runtime>::mine_solution_with_snapshot::<<Runtime as Config>::Solver>(
 					voters,
 					targets,
@@ -2058,7 +2101,7 @@ mod tests {
 
 			// election with unbounded max backers per winnner.
 			MaxBackersPerWinner::set(max_backers_bound);
-			let (solution, score, _, trimming_status) =
+			let (solution, score, _, trimming_status, _) =
 				Miner::<Runtime>::mine_solution_with_snapshot::<<Runtime as Config>::Solver>(
 					voters.clone(),
 					targets.clone(),
@@ -2090,7 +2133,7 @@ mod tests {
 
 			// election with bounded 2 max backers per winnner.
 			MaxBackersPerWinner::set(trim_backers_bound);
-			let (solution, score, _, trimming_status) =
+			let (solution, score, _, trimming_status, _) =
 				Miner::<Runtime>::mine_solution_with_snapshot::<<Runtime as Config>::Solver>(
 					voters.clone(),
 					targets.clone(),

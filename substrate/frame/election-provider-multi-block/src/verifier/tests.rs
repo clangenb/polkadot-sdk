@@ -38,7 +38,7 @@ mod feasibility_check {
 		ExtBuilder::mock_signed().build_unchecked().execute_with(|| {
 			// create snapshot just so that we can create a solution..
 			roll_to_snapshot_created();
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 
 			// ..remove the only page of the target snapshot.
 			crate::Snapshot::<Runtime>::remove_target_page();
@@ -51,7 +51,7 @@ mod feasibility_check {
 
 		ExtBuilder::mock_signed().pages(2).build_unchecked().execute_with(|| {
 			roll_to_snapshot_created();
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 
 			// ..remove just one of the pages of voter snapshot that is relevant.
 			crate::Snapshot::<Runtime>::remove_voter_page(0);
@@ -64,7 +64,7 @@ mod feasibility_check {
 
 		ExtBuilder::mock_signed().pages(2).build_unchecked().execute_with(|| {
 			roll_to_snapshot_created();
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 
 			// ..removing this page is not important, because we check page 0.
 			crate::Snapshot::<Runtime>::remove_voter_page(1);
@@ -77,7 +77,7 @@ mod feasibility_check {
 
 		ExtBuilder::mock_signed().pages(2).build_unchecked().execute_with(|| {
 			roll_to_snapshot_created();
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 
 			// `DesiredTargets` missing is also an error
 			crate::Snapshot::<Runtime>::kill_desired_targets();
@@ -90,7 +90,7 @@ mod feasibility_check {
 
 		ExtBuilder::mock_signed().pages(2).build_unchecked().execute_with(|| {
 			roll_to_snapshot_created();
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 
 			// `DesiredTargets` is not checked here.
 			crate::Snapshot::<Runtime>::remove_target_page();
@@ -106,7 +106,7 @@ mod feasibility_check {
 	fn winner_indices_single_page_must_be_in_bounds() {
 		ExtBuilder::mock_signed().pages(1).desired_targets(2).build_and_execute(|| {
 			roll_to_snapshot_created();
-			let mut paged = mine_full_solution().unwrap();
+			let (mut paged, _) = mine_full_solution().unwrap();
 			assert_eq!(crate::Snapshot::<Runtime>::targets().unwrap().len(), 4);
 			// ----------------------------------------------------^^ valid range is [0..3].
 
@@ -132,7 +132,7 @@ mod feasibility_check {
 			.desired_targets(2)
 			.build_and_execute(|| {
 				roll_to_snapshot_created();
-				let mut paged = mine_full_solution().unwrap();
+				let (mut paged, _) = mine_full_solution().unwrap();
 
 				assert_eq!(crate::Snapshot::<Runtime>::voters(0).unwrap().len(), 12);
 				// ------------------------------------------------^^ valid range is [0..11] in page
@@ -166,7 +166,7 @@ mod feasibility_check {
 			.desired_targets(2)
 			.build_and_execute(|| {
 				roll_to_snapshot_created();
-				let mut paged = mine_full_solution().unwrap();
+				let (mut paged, _) = mine_full_solution().unwrap();
 
 				// First, check that voter at index 11 (40) actually voted for 3 (40) -- this is
 				// self vote. Then, change the vote to 2 (30).
@@ -292,7 +292,7 @@ mod async_verification {
 			// load a solution after the snapshot has been created.
 			roll_to_snapshot_created();
 
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 			load_mock_signed_and_start(solution.clone());
 
 			// now let it verify
@@ -316,7 +316,7 @@ mod async_verification {
 			// load a solution after the snapshot has been created.
 			roll_to_snapshot_created();
 
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 			// ------------- ^^^^^^^^^^^^
 
 			load_mock_signed_and_start(solution.clone());
@@ -362,7 +362,7 @@ mod async_verification {
 			// load a solution after the snapshot has been created.
 			roll_to_snapshot_created();
 
-			let solution = mine_solution(2).unwrap();
+			let (solution, _) = mine_solution(2).unwrap();
 			// -------------------------^^^
 
 			load_mock_signed_and_start(solution.clone());
@@ -453,7 +453,7 @@ mod async_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 			load_mock_signed_and_start(solution.clone());
 
 			assert_eq!(VerifierPallet::status(), Status::Ongoing(2));
@@ -500,7 +500,7 @@ mod async_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 			load_mock_signed_and_start(solution.clone());
 
 			assert_eq!(VerifierPallet::status(), Status::Ongoing(2));
@@ -537,7 +537,7 @@ mod async_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 
-			let solution = mine_full_solution().unwrap();
+			let (solution, _) = mine_full_solution().unwrap();
 			load_mock_signed_and_start(solution.clone());
 			assert_eq!(VerifierPallet::status(), Status::Ongoing(2));
 
@@ -559,7 +559,7 @@ mod async_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 
-			let mut solution = mine_full_solution().unwrap();
+			let (mut solution, _) = mine_full_solution().unwrap();
 			// Make the solution invalid by corrupting the first page
 			solution.solution_pages[0].corrupt();
 			load_mock_signed_and_start(solution.clone());
@@ -596,7 +596,7 @@ mod async_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 			load_mock_signed_and_start(paged.clone());
 			let _ = roll_to_full_verification();
 
@@ -675,7 +675,7 @@ mod async_verification {
 			);
 			assert_eq!(MockSignedResults::get(), vec![VerificationResult::Queued]);
 
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 			load_mock_signed_and_start(paged.clone());
 			let _ = roll_to_full_verification();
 
@@ -703,7 +703,7 @@ mod async_verification {
 	fn invalid_solution_bad_score() {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
-			let mut paged = mine_full_solution().unwrap();
+			let (mut paged, _) = mine_full_solution().unwrap();
 
 			// just tweak score.
 			paged.score.minimal_stake += 1;
@@ -732,7 +732,7 @@ mod async_verification {
 	fn invalid_solution_bad_minimum_score() {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 
 			// our minimum score is our score, just a bit better.
 			let mut better_score = paged.score;
@@ -761,7 +761,7 @@ mod async_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 			assert_eq!(crate::Snapshot::<Runtime>::desired_targets().unwrap(), 2);
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 
 			// tweak this, for whatever reason.
 			crate::Snapshot::<Runtime>::set_desired_targets(3);
@@ -898,7 +898,7 @@ mod async_verification {
 	fn invalid_solution_does_not_alter_queue() {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
-			let mut paged = mine_full_solution().unwrap();
+			let (mut paged, _) = mine_full_solution().unwrap();
 			let correct_score = paged.score;
 
 			assert!(<VerifierPallet as Verifier>::queued_score().is_none());
@@ -954,7 +954,7 @@ mod multi_page_sync_verification {
 	fn basic_sync_verification_works() {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
-			let paged = mine_solution(2).unwrap();
+			let (paged, _) = mine_solution(2).unwrap();
 
 			assert_eq!(verifier_events(), vec![]);
 			assert_eq!(<VerifierPallet as Verifier>::queued_score(), None);
@@ -982,7 +982,7 @@ mod multi_page_sync_verification {
 	fn basic_sync_verification_works_full() {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
-			let paged = mine_full_solution().unwrap();
+			let (paged, _) = mine_full_solution().unwrap();
 
 			assert_eq!(verifier_events(), vec![]);
 			assert_eq!(<VerifierPallet as Verifier>::queued_score(), None);
@@ -1012,7 +1012,7 @@ mod multi_page_sync_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			// A solution that where each individual page is valid, but the final score is bad.
 			roll_to_snapshot_created();
-			let mut paged = mine_solution(2).unwrap();
+			let (mut paged, _) = mine_solution(2).unwrap();
 			paged.score.minimal_stake += 1;
 
 			assert_eq!(verifier_events(), vec![]);
@@ -1046,7 +1046,7 @@ mod multi_page_sync_verification {
 			// A solution that where the second validated page is invalid.
 			use frame_election_provider_support::traits::NposSolution;
 			roll_to_snapshot_created();
-			let mut paged = mine_solution(2).unwrap();
+			let (mut paged, _) = mine_solution(2).unwrap();
 			paged.solution_pages.last_mut().map(|p| p.corrupt());
 
 			assert_eq!(verifier_events(), vec![]);
@@ -1084,7 +1084,7 @@ mod multi_page_sync_verification {
 			// A solution that where the at the second page with hit the final max backers per
 			// winner final bound.
 			roll_to_snapshot_created();
-			let paged = mine_solution(2).unwrap();
+			let (paged, _) = mine_solution(2).unwrap();
 
 			hypothetically!({
 				assert_ok!(<VerifierPallet as Verifier>::verify_synchronous_multi(
@@ -1158,7 +1158,7 @@ mod single_page_sync_verification {
 	fn basic_sync_verification_works() {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 
 			assert_eq!(verifier_events(), vec![]);
 			assert_eq!(<VerifierPallet as Verifier>::queued_score(), None);
@@ -1185,7 +1185,7 @@ mod single_page_sync_verification {
 	fn winner_count_more() {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 
 			// change the snapshot, as if the desired targets is now 1. This solution is then valid,
 			// but has too many.
@@ -1217,7 +1217,7 @@ mod single_page_sync_verification {
 	fn winner_count_less() {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 
 			assert_eq!(verifier_events(), vec![]);
 			assert_eq!(<VerifierPallet as Verifier>::queued_score(), None);
@@ -1251,7 +1251,7 @@ mod single_page_sync_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 			let mut score_incorrect = single_page.score;
 			score_incorrect.minimal_stake += 1;
 
@@ -1280,7 +1280,7 @@ mod single_page_sync_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 
 			// raise the bar such that we don't meet it.
 			let mut unattainable_score = single_page.score;
@@ -1310,7 +1310,7 @@ mod single_page_sync_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 			// note: change this after the miner is done, otherwise it is smart enough to trim.
 			MaxBackersPerWinner::set(1);
 
@@ -1339,7 +1339,7 @@ mod single_page_sync_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 			// note: the miner does feasibility internally, change this parameter afterwards.
 			MaxWinnersPerPage::set(1);
 
@@ -1368,7 +1368,7 @@ mod single_page_sync_verification {
 		ExtBuilder::mock_signed().build_and_execute(|| {
 			roll_to_snapshot_created();
 
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 			// note: the miner does feasibility internally, change this parameter afterwards.
 			MaxBackersPerWinnerFinal::set(1);
 
@@ -1398,7 +1398,7 @@ mod single_page_sync_verification {
 			roll_to_snapshot_created();
 
 			// submit something good.
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 			let _ = <VerifierPallet as Verifier>::verify_synchronous(
 				single_page.solution_pages.first().cloned().unwrap(),
 				single_page.score,
@@ -1431,7 +1431,7 @@ mod single_page_sync_verification {
 			roll_to_snapshot_created();
 
 			// Queue something useful.
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 			let _ = <VerifierPallet as Verifier>::verify_synchronous(
 				single_page.solution_pages.first().cloned().unwrap(),
 				single_page.score,
@@ -1470,7 +1470,7 @@ mod single_page_sync_verification {
 			roll_to_snapshot_created();
 
 			// queue something useful.
-			let single_page = mine_solution(1).unwrap();
+			let (single_page, _) = mine_solution(1).unwrap();
 			let _ = <VerifierPallet as Verifier>::verify_synchronous(
 				single_page.solution_pages.first().cloned().unwrap(),
 				single_page.score,
@@ -1534,7 +1534,7 @@ mod single_page_sync_verification {
 			assert_eq!(<VerifierPallet as Verifier>::queued_score(), Some(weak_paged.score));
 
 			// now get a better solution.
-			let better = mine_solution(1).unwrap();
+			let (better, _) = mine_solution(1).unwrap();
 
 			let _ = <VerifierPallet as Verifier>::verify_synchronous(
 				better.solution_pages.first().cloned().unwrap(),
@@ -1563,7 +1563,7 @@ mod single_page_sync_verification {
 			roll_to_snapshot_created();
 
 			// first, submit something good
-			let better = mine_solution(1).unwrap();
+			let (better, _) = mine_solution(1).unwrap();
 			let _ = <VerifierPallet as Verifier>::verify_synchronous(
 				better.solution_pages.first().cloned().unwrap(),
 				better.score,

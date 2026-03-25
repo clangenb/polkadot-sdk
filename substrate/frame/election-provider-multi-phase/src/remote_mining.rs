@@ -183,7 +183,7 @@ where
 	let snapshot = HackyGetSnapshot::<T>::snapshot();
 	let desired_targets = HackyGetSnapshot::<T>::desired_targets();
 
-	let (solution, score, _size, _trimming) =
+	let (solution, score, _size, _trimming, _winners) =
 		Miner::<T>::mine_solution_with_snapshot::<SolverOf<T>>(
 			snapshot.voters.clone(),
 			snapshot.targets.clone(),

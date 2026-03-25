@@ -101,7 +101,7 @@ mod benchmarks {
 		});
 
 		// mine a full solution
-		let PagedRawSolution { score, solution_pages, .. } =
+		let (PagedRawSolution { score, solution_pages, .. }, _) =
 			OffchainWorkerMiner::<T>::mine_solution(T::Pages::get(), false).unwrap();
 		let page = Some(Box::new(solution_pages[0].clone()));
 
@@ -128,7 +128,7 @@ mod benchmarks {
 		});
 
 		// mine a full solution
-		let PagedRawSolution { score, solution_pages, .. } =
+		let (PagedRawSolution { score, solution_pages, .. }, _) =
 			OffchainWorkerMiner::<T>::mine_solution(T::Pages::get(), false).unwrap();
 		let page = Some(Box::new(solution_pages[0].clone()));
 
