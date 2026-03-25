@@ -13,5 +13,5 @@ doc:
 
      Closes #4335.
 crates:
-- name: yet-another-parachain-runtime
+- name: xcm-docs
   bump: minor
