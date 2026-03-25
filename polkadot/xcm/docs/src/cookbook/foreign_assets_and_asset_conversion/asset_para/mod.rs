@@ -21,7 +21,7 @@
 //! that has the capabilities of:
 //! 1. Having foreign assets registered.
 //! 2. Set up a liquidity pool of the native and foreign assets
-//! 3. Configure the XCM stuff to use the foreign tokens and pay XCM fees with foreign tokens.
+//! 3. Configure XCM to use the foreign tokens and pay XCM fees with foreign tokens.
 
 use frame::{deps::frame_system, runtime::prelude::*, traits::IdentityLookup};
 use xcm_executor::XcmExecutor;
