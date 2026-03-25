@@ -583,7 +583,7 @@ pub mod pallet {
 		/// The `lp_provider` must already hold sufficient balances of both assets.
 		/// If both `amount1` and `amount2` are non-zero, initial liquidity is added.
 		/// Returns the LP token amount minted to `lp_provider` (zero if no liquidity).
-		pub fn setup_pool_from_genesis(
+		pub(crate) fn setup_pool_from_genesis(
 			asset1: &T::AssetKind,
 			asset2: &T::AssetKind,
 			lp_provider: &T::AccountId,
