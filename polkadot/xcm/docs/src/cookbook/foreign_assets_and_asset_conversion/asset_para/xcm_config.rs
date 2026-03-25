@@ -56,8 +56,6 @@ parameter_types! {
 }
 
 pub type LocationToAccountId = (
-	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
-	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<ThisNetwork, AccountId>,
 	// Foreign locations alias into accounts according to a hash of their standard description.
