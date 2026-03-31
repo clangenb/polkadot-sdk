@@ -259,7 +259,7 @@ impl xcm_executor::Config for XcmConfig {
 	type RuntimeCall = RuntimeCall;
 	// NOTE: Sending from AssetPara is handled by `pallet_xcm::Config::XcmRouter`, not by
 	// `XcmSender` here. The executor's `XcmSender` is only used for instructions like
-	// `SendXcm`; `pallet_xcm` extrinsics (e.g. `limited_teleport_assets`) use their own router.
+	// `InitiateTransfer`; `pallet_xcm` extrinsics (e.g. `limited_teleport_assets`) use their own router.
 	type XcmSender = ();
 	type XcmEventEmitter = XcmPallet;
 	type AssetTransactor = asset_transactor::AssetTransactors;
