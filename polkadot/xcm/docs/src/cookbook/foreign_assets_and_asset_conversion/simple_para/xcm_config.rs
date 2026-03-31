@@ -65,7 +65,7 @@ mod asset_transactor {
 		// The type for account ids, only needed because `fungible` is generic over it.
 		AccountId,
 		// Not tracking teleports.
-		// This recipe only uses reserve asset transfers to handle the Relay Chain token.
+		// This recipe only uses reserve asset transfers to handle the native token.
 		(),
 	>;
 
@@ -142,7 +142,7 @@ impl pallet_xcm::Config for Runtime {
 	type XcmExecuteFilter = Everything;
 	// How we execute programs
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	// We only allow teleporting our own asset.
+	// We don't use teleports in this example, but allow them in the filter for completeness.
 	type XcmTeleportFilter = Everything;
 	// We allow all reserve transfers
 	type XcmReserveTransferFilter = Everything;

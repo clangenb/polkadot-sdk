@@ -74,7 +74,7 @@ mod asset_transactor {
 		pub HereLocation: Location = Location::here();
 	}
 
-	/// AssetTransactor for handling the relay chain token
+	/// AssetTransactor for handling the native token
 	pub type FungibleTransactor = FungibleAdapter<
 		// Use this implementation of the `fungible::*` traits.
 		// `Balances` is the name given to the balances pallet in this particular recipe.
@@ -259,7 +259,7 @@ impl xcm_executor::Config for XcmConfig {
 	type RuntimeCall = RuntimeCall;
 	// NOTE: Sending from AssetPara is handled by `pallet_xcm::Config::XcmRouter`, not by
 	// `XcmSender` here. The executor's `XcmSender` is only used for instructions like
-	// `InitiateTransfer`; `pallet_xcm` extrinsics (e.g. `limited_teleport_assets`) use their own router.
+	// `InitiateTransfer`; `pallet_xcm` extrinsics (e.g. `limited_reserve_transfer_assets`) use their own router.
 	type XcmSender = ();
 	type XcmEventEmitter = XcmPallet;
 	type AssetTransactor = asset_transactor::AssetTransactors;
@@ -310,7 +310,7 @@ impl pallet_xcm::Config for Runtime {
 	type XcmExecuteFilter = Everything;
 	// How we execute programs
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	// We allow teleports in general. The filtering happens through the `TrusterTeleporters`.
+	// We don't use teleports in this example, but allow them in the filter for completeness.
 	type XcmTeleportFilter = Everything;
 	// We allow all reserve transfers
 	type XcmReserveTransferFilter = Everything;
@@ -329,7 +329,7 @@ impl pallet_xcm::Config for Runtime {
 	type RemoteLockConsumerIdentifier = ();
 	// How to turn locations into accounts
 	type SovereignAccountOf = LocationToAccountId;
-	// A currency to pay for things and its matcher, we are using the relay token
+	// A currency to pay for things and its matcher, we are using the native token
 	type Currency = Balances;
 	type CurrencyMatcher = IsConcrete<HereLocation>;
 	// Pallet benchmarks, no need for this recipe
