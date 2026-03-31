@@ -88,7 +88,7 @@ mod asset_transactor {
 		// The type for account ids, only needed because `fungible` is generic over it.
 		AccountId,
 		// Not tracking teleports.
-		// This recipe only uses reserve asset transfers to handle the Relay Chain token.
+		// This recipe only uses reserve asset transfers to handle the native token.
 		(),
 	>;
 
