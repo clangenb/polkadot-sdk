@@ -31,14 +31,16 @@ use frame::{
 	traits::{Disabled, Equals, Everything, Nothing},
 };
 use pallet_xcm::XcmPassthrough;
+use parachains_common::xcm_config::ParentRelayOrSiblingParachains;
 use sp_runtime::traits::TryConvertInto;
 use xcm::latest::prelude::*;
 use xcm_builder::{
-	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, DescribeAllTerminal, DescribeFamily,
+	AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowHrmpNotificationsFromRelayChain,
+	AllowSubscriptionsFrom, AllowTopLevelPaidExecutionFrom, DescribeAllTerminal, DescribeFamily,
 	EnsureXcmOrigin, FrameTransactionalProcessor, FungibleAdapter, HashedDescription, IsConcrete,
 	SiblingParachainAsNative, SignedAccountId32AsNative, SignedToAccountId32,
 	SovereignSignedViaLocation, StartsWithExplicitGlobalConsensus, TakeWeightCredit,
-	TrailingSetTopicAsId, UsingComponents, XcmFeeManagerFromComponents,
+	TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, XcmFeeManagerFromComponents,
 };
 use xcm_executor::XcmExecutor;
 
@@ -249,9 +251,20 @@ pub type XcmOriginToTransactDispatchOrigin = (
 pub type Barrier = TrailingSetTopicAsId<(
 	// Withdraws funds from a local account for local execution.
 	TakeWeightCredit,
-	// If the message is one that immediately attempts to pay for execution, then
-	// allow it.
-	AllowTopLevelPaidExecutionFrom<Everything>,
+	// Check specific origin patterns to see if they should pass the barrier
+	WithComputedOrigin<
+		(
+			// If the message is one that immediately attempts to pay for execution, then
+			// allow it.
+			AllowTopLevelPaidExecutionFrom<Everything>,
+			// Subscriptions for version tracking are OK.
+			AllowSubscriptionsFrom<ParentRelayOrSiblingParachains>,
+			// HRMP notifications from the relay chain are OK.
+			AllowHrmpNotificationsFromRelayChain,
+		),
+		UniversalLocation,
+		ConstU32<8>,
+	>,
 )>;
 
 pub struct XcmConfig;
