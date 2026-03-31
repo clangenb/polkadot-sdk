@@ -44,18 +44,11 @@
     traders
 )]
 //! Once we have set up the facilities to create and swap foreign tokens, we need to ensure that
-//! we can also send the tokens back and forth, which is done via the `IsTrustedTeleporter` config
-//! that we define as follows.
-//!
-//! For the Simple Para:
-#![doc = docify::embed!(
-    "src/cookbook/foreign_assets_and_asset_conversion/simple_para/xcm_config.rs",
-    teleport_config
-)]
-//! For the Asset Para:
+//! we can also send the tokens back and forth, which is done via the `IsReserve` config
+//! that we define as follows on the Asset Para:
 #![doc = docify::embed!(
     "src/cookbook/foreign_assets_and_asset_conversion/asset_para/xcm_config.rs",
-    teleport_config
+    reserve_config
 )]
 //! Finally, in the test we show how the flow to create and use a foreign asset would look like, and
 //! what events would be emitted by the chain.

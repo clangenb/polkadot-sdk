@@ -18,9 +18,7 @@
 //! # XCM Configuration
 
 use super::{AccountId, Balances, MessageQueue, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin};
-use crate::cookbook::foreign_assets_and_asset_conversion::network::{
-	ASSET_PARA_ID, SIMPLE_PARA_ID,
-};
+use crate::cookbook::foreign_assets_and_asset_conversion::network::SIMPLE_PARA_ID;
 use frame::{
 	deps::frame_system,
 	runtime::prelude::*,
@@ -28,7 +26,7 @@ use frame::{
 };
 use xcm::latest::prelude::*;
 use xcm_builder::{
-	AccountId32Aliases, Case, DescribeAllTerminal, DescribeFamily, EnsureXcmOrigin,
+	AccountId32Aliases, DescribeAllTerminal, DescribeFamily, EnsureXcmOrigin,
 	FrameTransactionalProcessor, FungibleAdapter, HashedDescription, IsConcrete,
 	SignedToAccountId32,
 };
@@ -92,27 +90,6 @@ mod weigher {
 
 parameter_types! {
 	pub UniversalLocation: InteriorLocation = [GlobalConsensus(NetworkId::Polkadot), Parachain(SIMPLE_PARA_ID)].into();
-
-	pub AssetParaLocation: Location = Location::new(1, [Parachain(ASSET_PARA_ID)]);
-	pub const SimpleParaNative: AssetFilter = Wild(AllOf { fun: WildFungible, id: AssetId(Location::here()) });
-	pub AssetParaTrustedTeleporter: (AssetFilter, Location) = (SimpleParaNative::get(), AssetParaLocation::get());
-}
-
-/// Teleport config to send our asset to the Asset Para.
-#[docify::export]
-mod teleport_config {
-	use super::*;
-
-	parameter_types! {
-		pub AssetParaLocation: Location = Location::new(1, [Parachain(ASSET_PARA_ID)]);
-		pub const SimpleParaNative: AssetFilter = Wild(AllOf { fun: WildFungible, id: AssetId(Location::here()) });
-
-		/// The Asset Para is a trusted teleporter for our native token.
-		pub AssetParaTrustedTeleporter: (AssetFilter, Location) = (SimpleParaNative::get(), AssetParaLocation::get());
-	}
-
-	/// All our trusted teleporter Cases. In this example it is only one.
-	pub type TrustedTeleporters = (Case<AssetParaTrustedTeleporter>,);
 }
 
 pub struct XcmConfig;
@@ -122,10 +99,8 @@ impl xcm_executor::Config for XcmConfig {
 	type XcmEventEmitter = ();
 	type AssetTransactor = asset_transactor::AssetTransactor;
 	type OriginConverter = ();
-	// The declaration of which Locations are reserves for which Assets.
 	type IsReserve = ();
-	// Trusted teleport destinations
-	type IsTeleporter = teleport_config::TrustedTeleporters;
+	type IsTeleporter = ();
 	type UniversalLocation = UniversalLocation;
 	// This is not safe, you should use `xcm_builder::AllowTopLevelPaidExecutionFrom<T>` in a
 	// production chain

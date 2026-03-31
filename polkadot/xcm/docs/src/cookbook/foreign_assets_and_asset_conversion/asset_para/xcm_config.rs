@@ -31,13 +31,12 @@ use frame::{
 	traits::{Disabled, Equals, Everything, Nothing},
 };
 use pallet_xcm::XcmPassthrough;
-use polkadot_parachain_primitives::primitives::Sibling;
 use sp_runtime::traits::TryConvertInto;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowTopLevelPaidExecutionFrom, DescribeAllTerminal, DescribeFamily,
 	EnsureXcmOrigin, FrameTransactionalProcessor, FungibleAdapter, HashedDescription, IsConcrete,
-	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
+	SiblingParachainAsNative, SignedAccountId32AsNative,
 	SignedToAccountId32, SovereignSignedViaLocation, StartsWithExplicitGlobalConsensus,
 	TakeWeightCredit, TrailingSetTopicAsId, UsingComponents, XcmFeeManagerFromComponents,
 };
@@ -187,15 +186,15 @@ mod weigher {
 	pub type Weigher = FixedWeightBounds<WeightPerInstruction, RuntimeCall, MaxInstructions>;
 }
 
-/// Teleport config for this runtime.
+/// Reserve config for this runtime.
 #[docify::export]
-mod teleport_config {
+mod reserve_config {
 	use super::*;
 
-	/// We generally accept teleports from other chains, when they send their native token, i.e.,
-	/// when the following is true:
+	/// We generally accept reserve transfers from other chains, when they send their native
+	/// token, i.e., when the following is true:
 	/// - Sibling parachains' assets from where they originate (as `ForeignCreators`).
-	pub type TrustedTeleporters =
+	pub type TrustedReserves =
 		(IsForeignConcreteAsset<FromSiblingParachain<parachain_info::Pallet<Runtime>>>,);
 }
 
@@ -262,20 +261,18 @@ impl xcm_executor::Config for XcmConfig {
 	// `XcmSender` here. The executor's `XcmSender` is only used for instructions like
 	// `SendXcm`; `pallet_xcm` extrinsics (e.g. `limited_teleport_assets`) use their own router.
 	type XcmSender = ();
-	// No XCM executor events emitted. In production you'd wire this to `XcmPallet` to get
-	// executor-level tracing events.
-	type XcmEventEmitter = ();
+	type XcmEventEmitter = XcmPallet;
 	type AssetTransactor = asset_transactor::AssetTransactors;
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
 	// The declaration of which Locations are reserves for which Assets.
-	type IsReserve = ();
-	type IsTeleporter = teleport_config::TrustedTeleporters;
+	type IsReserve = reserve_config::TrustedReserves;
+	type IsTeleporter = ();
 	type UniversalLocation = UniversalLocation;
 	type Barrier = Barrier;
 	type Weigher = weigher::Weigher;
 	type Trader = traders::Traders;
-	type ResponseHandler = ();
-	type AssetTrap = ();
+	type ResponseHandler = XcmPallet;
+	type AssetTrap = XcmPallet;
 	type AssetLocker = ();
 	type AssetExchanger = asset_transactor::PoolAssetsExchanger;
 	type SubscriptionService = ();
@@ -295,7 +292,7 @@ impl xcm_executor::Config for XcmConfig {
 	type HrmpNewChannelOpenRequestHandler = ();
 	type HrmpChannelAcceptedHandler = ();
 	type HrmpChannelClosingHandler = ();
-	type XcmRecorder = ();
+	type XcmRecorder = XcmPallet;
 }
 
 /// Converts a local signed origin into an XCM location. Forms the basis for local origins

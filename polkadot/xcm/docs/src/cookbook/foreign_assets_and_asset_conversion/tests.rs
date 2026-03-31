@@ -243,7 +243,7 @@ fn registering_foreign_assets_work() {
 		asset_para::System::reset_events();
 	});
 
-	// ------------- Step 3. Teleport our native asset to Asset Para and back.
+	// ------------- Step 3. Reserve transfer our native asset to Asset Para and back.
 
 	let alice_location = Location {
 		parents: 0,
@@ -252,13 +252,13 @@ fn registering_foreign_assets_work() {
 	};
 
 	SimplePara::execute_with(|| {
-		assert_ok!(simple_para::XcmPallet::limited_teleport_assets(
+		assert_ok!(simple_para::XcmPallet::limited_reserve_transfer_assets(
 			simple_para::RuntimeOrigin::signed(ALICE),
 			// Destination chain
 			Box::new(Location::new(1, Parachain(ASSET_PARA_ID)).into()),
 			// Beneficiary
 			Box::new(alice_location.clone().into()),
-			// Assets to be teleported
+			// Assets to be reserve transferred
 			Box::new(vec![(Location::here(), Fungible(2 * FOREIGN_UNITS)).into()].into()),
 			// Fee asset index
 			0,
@@ -312,14 +312,14 @@ fn registering_foreign_assets_work() {
 		// clear events that we do not want later.
 		asset_para::System::reset_events();
 
-		// Teleport some tokens back to the Simple Para.
-		assert_ok!(asset_para::XcmPallet::limited_teleport_assets(
+		// Reserve transfer some tokens back to the Simple Para.
+		assert_ok!(asset_para::XcmPallet::limited_reserve_transfer_assets(
 			asset_para::RuntimeOrigin::signed(ALICE),
 			// Destination chain
 			Box::new(Location::new(1, Parachain(SIMPLE_PARA_ID)).into()),
 			// Beneficiary
 			Box::new(alice_location.into()),
-			// Assets to be teleported (note the difference to above).
+			// Assets to be reserve transferred (note the difference to above).
 			Box::new(
 				vec![(Location::new(1, Parachain(SIMPLE_PARA_ID)), Fungible(FOREIGN_UNITS)).into()]
 					.into()
