@@ -486,7 +486,8 @@ fn send_back_wnds_from_penpal_rococo_through_asset_hub_rococo_to_asset_hub_weste
 	AssetHubWestend::fund_accounts(vec![(sov_ahr_on_ahw.clone(), amount * 2)]);
 
 	// balances before
-	let sender_wnds_before = assets_balance_on!(PenpalA, wnd_at_rococo_parachains.clone().into(), &sender);
+	let sender_wnds_before =
+		assets_balance_on!(PenpalA, wnd_at_rococo_parachains.clone().into(), &sender);
 	let receiver_wnds_before = <AssetHubWestend as Chain>::account_data_of(receiver.clone()).free;
 
 	// send WNDs over the bridge, ROCs only used to pay fees on local AH, pay with WND on remote AH
